@@ -142,5 +142,3 @@ pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43
 - [Wall-OSS（Wall-X）](https://github.com/X-Square-Robot/wall-x) 和 [VLA-JEPA](https://github.com/ginwind/VLA-JEPA) 提供了本框架适配的机器人策略，用于训练与推理。
 - [Hugging Face LeRobot](https://github.com/huggingface/lerobot) 提供了示范数据集格式和 π₀.₅ 策略实现。
 - [DPPO](https://github.com/irom-princeton/dppo) 提供了针对扩散策略的优化方法。[ZPRL](https://github.com/ManUtdMoon/ZPRL) 提供了 SAC 实现，以及在冻结策略上学习调制的方法参考。
-
-README 的结构参考了 [DomPizzie 的模板](https://gist.github.com/DomPizzie/7a5ff55ffa9081f2de27c315f5018afc)。

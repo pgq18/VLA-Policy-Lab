@@ -142,5 +142,3 @@ We thank the teams behind these projects.
 - [Wall-OSS (Wall-X)](https://github.com/X-Square-Robot/wall-x) and [VLA-JEPA](https://github.com/ginwind/VLA-JEPA) for the policies adapted for robot training and inference.
 - [Hugging Face LeRobot](https://github.com/huggingface/lerobot) for the demonstration dataset format and the π₀.₅ policy implementation.
 - [DPPO](https://github.com/irom-princeton/dppo) for diffusion-policy optimization, and [ZPRL](https://github.com/ManUtdMoon/ZPRL) for its SAC implementation and work on steering frozen policies.
-
-The README layout draws on [DomPizzie's template](https://gist.github.com/DomPizzie/7a5ff55ffa9081f2de27c315f5018afc).
