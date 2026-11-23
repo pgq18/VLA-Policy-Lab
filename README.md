@@ -6,11 +6,13 @@ VLA Policy Lab is a Python framework for training and evaluating robot policies.
 
 The framework includes VLA-JEPA, Wall-OSS, Diffusion Policy, and LeRobot π₀.₅. Tasks cover elevator and tabletop button pressing, pick-and-place, cube stacking, and tabletop cleanup. Online training can learn the initial noise (DSRL), action residuals, or both with a frozen policy. DPPO fine-tunes the action expert.
 
-[Getting started](#getting-started) · [Elevator walkthrough](#walkthrough-press-the-requested-elevator-button) · [Framework guide](docs/project_framework.md) · [Agent skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
+[Installation](#installation) · [Fine-tuning](#fine-tune-on-demonstrations) · [Online RL](#online-rl-training) · [Evaluation](#evaluation) · [Framework guide](docs/project_framework.md) · [Agent skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
 
 ## Getting started
 
-Use Python **3.10 or 3.11**. The package and CLI are named `pressb`. Install the model dependencies in the training and inference environments and the Isaac Sim dependencies on the simulation host. Install `python -m pip install -e '.[online-rl]'` in the RL runner environment. [Model setup](docs/bundled_models.md) · [Simulator setup](docs/rtx5090_setup.md)
+### Installation
+
+Use Python **3.10 or 3.11**. The package and CLI are named `pressb`. Install the model dependencies on the training and inference hosts, and Isaac Sim on the simulation host. In the model environment, install `python -m pip install -e '.[inference-server]'` for the inference service. In the runner environment, install `python -m pip install -e '.[online-rl]'`. [Model setup](docs/bundled_models.md) · [Simulator setup](docs/rtx5090_setup.md)
 
 ```bash
 git clone https://github.com/pgq18/VLA-Policy-Lab.git
@@ -19,13 +21,9 @@ python -m pip install -e .
 pressb list
 ```
 
-## Walkthrough: press the requested elevator button
+### Fine-tune on demonstrations
 
-A PiPER arm must press the button for a requested floor between 24 and 35. The three stages below use the same VLA-JEPA pose9 policy. SFT learns from demonstrations. Online RL learns from simulated button presses. Evaluation measures completed episodes with learning disabled.
-
-### 1. Fine-tune VLA-JEPA on demonstrations
-
-On the SFT host, install the [VLA-JEPA training dependencies](src/pressb/model_sources/vlajepa/requirements-piper.txt) and supply a 30 Hz elevator **press-prefix LeRobot export** with global and wrist images and 100 successful episodes per floor (1,200 total). The reader converts the demonstrated TCP poses to XYZ plus a 6D rotation. If starting from raw elevator demonstrations, use the [press-prefix exporter](scripts/export_press_dataset.py).
+Fine-tune VLA-JEPA to press the requested elevator button with a PiPER arm. On the SFT host, install the [VLA-JEPA training dependencies](src/pressb/model_sources/vlajepa/requirements-piper.txt) and supply a 30 Hz elevator **press-prefix LeRobot export** with global and wrist images and 100 successful episodes for each floor from 24 to 35 (1,200 total). The reader converts the demonstrated TCP poses to XYZ plus a 6D rotation. If starting from raw elevator demonstrations, use the [press-prefix exporter](scripts/export_press_dataset.py).
 
 ```bash
 export PRESSB_DATASET_ROOT=/data/elevator/press_prefix_lerobot
@@ -45,7 +43,7 @@ The [SFT configuration](configs/model_training/vlajepa_pose9.yaml) defaults to 2
 export PRESSB_SFT_CHECKPOINT="$PRESSB_RUN_ROOT/pose9/checkpoints/best"
 ```
 
-### 2. Train online using one RL method
+### Online RL training
 
 The [example recipes](examples/elevator/) share the same SFT weights, one simulated environment and a training budget of 10,000 chunk transitions, with up to seven control steps per chunk. Choose a recipe for the parameters you want to update.
 
@@ -54,23 +52,35 @@ The [example recipes](examples/elevator/) share the same SFT weights, one simula
 | [`dsrl`](examples/elevator/dsrl.json) | A SAC actor selects the decoder's initial noise | Frozen SFT policy |
 | [`action_residual`](examples/elevator/action_residual.json) | A SAC actor adds XYZ corrections of up to 0.02 m per axis | Frozen SFT policy |
 | [`joint_residual`](examples/elevator/joint_residual.json) | One SAC actor adjusts both noise and XYZ actions | Frozen SFT policy |
-| [`residual_after_dsrl`](examples/elevator/residual_after_dsrl.json) | A fresh XYZ residual actor and critics train on top of a fixed DSRL actor | Same SFT weights **plus** the stage-one DSRL checkpoint |
+| [`residual_after_dsrl`](examples/elevator/residual_after_dsrl.json) | A fresh XYZ residual actor and critics train on top of a fixed DSRL actor | Same SFT weights **plus** the trained DSRL checkpoint |
 | [`dppo`](examples/elevator/dppo.json) | PPO updates the action expert and publishes each new version to inference | SFT weights on both inference and learner hosts, four denoising steps |
 
 **Prepare the simulator.** The recipes use the frozen training scene under `outputs/rtx5090_eval_comparison/input/`: the scene's `config.json`, `scene.usda`, `dataset_metadata/meta/collection_metadata.json`, and `assets/` bundle. Supply these external inputs and the PiPER assets. The examples use GPU 0 for simulation, GPU 1 for inference and learning, and loopback service addresses. Adjust the devices and endpoints for your hosts. [Node configuration](docs/configurable_rl_nodes.md)
 
-**Launch the three processes.** In each terminal, set the same `PRESSB_SFT_CHECKPOINT`, `PRESSB_QWEN_ROOT`, and `PRESSB_VJEPA_ROOT` variables from stage 1 (use paths readable on the corresponding host). Choose one method below and give the run a fresh name. To train another method, change `METHOD` and start its services with the matching recipe.
+In each terminal, set `PRESSB_SFT_CHECKPOINT` to the fine-tuned checkpoint and set `PRESSB_QWEN_ROOT` and `PRESSB_VJEPA_ROOT` to the backbone directories. Use paths readable on the corresponding host. Select a recipe from the table and a fresh run name in all three terminals.
 
 ```bash
 export METHOD=dsrl
 export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-train-01"
 ```
 
-| Terminal | Command |
-| --- | --- |
-| 1 · Inference | `pressb inference --config "$CFG"` |
-| 2 · Simulation | `pressb simulation --config "$CFG"` |
-| 3 · Learner | `pressb validate --config "$CFG"`, then `pressb train --config "$CFG"` once both services are ready |
+Start inference and simulation in separate terminals. Run the learner when both services are ready.
+
+```bash
+# Terminal 1: model environment
+pressb inference --config "$CFG"
+```
+
+```bash
+# Terminal 2: Isaac Sim environment
+pressb simulation --config "$CFG"
+```
+
+```bash
+# Terminal 3: learner environment, once both services are ready
+pressb validate --config "$CFG"
+pressb train --config "$CFG"
+```
 
 After training, read the **actual saved RL checkpoint path** from the runner status. SAC and DPPO use different checkpoint filenames.
 
@@ -80,7 +90,7 @@ export RL_CHECKPOINT="$(python -c 'import json,sys; print(json.load(open(sys.arg
 test -f "$RL_CHECKPOINT"
 ```
 
-For the two-stage method, complete `dsrl` first. Use its saved path for the following setup in all three terminals (copy the path from the learner terminal). Restart the three processes with this recipe.
+For two-stage training, take `RL_CHECKPOINT` from the completed DSRL run. Set it to the same saved path in all three terminals, then select the residual recipe and restart the services and learner.
 
 ```bash
 export PRESSB_DSRL_CHECKPOINT="$RL_CHECKPOINT"
@@ -90,14 +100,27 @@ export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-train-01"
 
 DSRL now supplies deterministic initial noise while the residual learner starts from scratch. After this stage, read its new `RL_CHECKPOINT` and keep the same `PRESSB_DSRL_CHECKPOINT` for evaluation.
 
-### 3. Evaluate SFT and RL on the same task
+### Evaluation
 
-For each row, set `CFG` and `ELEVATOR_RUN` as shown **in all three terminals**. Stop the previous services and restart inference and simulation with the new configuration. In the runner terminal, execute the evaluation command. You can run the SFT baseline immediately after stage 1.
+Evaluate the SFT checkpoint as soon as fine-tuning finishes. In all three terminals select the base recipe and a fresh run name, then start the inference and simulation services with that configuration. Run the evaluation command in the third terminal.
 
-| Policy | Configuration and fresh run name | Runner command |
-| --- | --- | --- |
-| SFT baseline | `CFG=examples/elevator/base.json` · `export ELEVATOR_RUN=sft-eval-01` | `pressb eval --config "$CFG" --episodes 10 --seed 43` |
-| Trained RL policy | `CFG="examples/elevator/$METHOD.json"` · `export ELEVATOR_RUN="$METHOD-eval-01"` | `pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43` |
+```bash
+# All terminals
+export CFG=examples/elevator/base.json ELEVATOR_RUN=sft-eval-01
+
+# Runner, once both services are ready
+pressb eval --config "$CFG" --episodes 10 --seed 43
+```
+
+To evaluate the RL policy, select its training recipe and restart both services with the new configuration. In the runner terminal, pass the RL checkpoint saved by that method. For `residual_after_dsrl`, also keep the original `PRESSB_DSRL_CHECKPOINT` set in all three terminals.
+
+```bash
+# All terminals, with METHOD set to the trained recipe
+export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-eval-01"
+
+# Runner
+pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43
+```
 
 For a paired DPPO comparison, also evaluate its starting expert using `dppo.json` with a freshly started SFT inference service, a fresh run name, and no `--resume`. This keeps the DPPO sampler identical before and after training. Keep the evaluation seed, floor sampler, episode timeout and action smoothing fixed.
 
@@ -111,12 +134,6 @@ Read `outputs/elevator/$ELEVATOR_RUN/run/status.json` for `episodes`, `successes
 - **Use an AI agent.** Invoke `$operate-vla-policy-lab` to select a recipe, assign GPUs, and configure node connections. [Repository skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
 
 Reusable code, configs, and guides belong in Git. Put run-specific checkpoints, logs, plots, and recordings under the ignored `outputs/` directory. Primary documentation and agent skills use English. Translated guides use a language suffix such as `.zh-CN.md`.
-
-## Project and license
-
-[Contributors](https://github.com/pgq18/VLA-Policy-Lab/graphs/contributors) · [Version history](https://github.com/pgq18/VLA-Policy-Lab/commits/main/) · [Report an issue](https://github.com/pgq18/VLA-Policy-Lab/issues)
-
-VLA Policy Lab's original code is licensed under the [MIT License](LICENSE). Third-party code, models, and robot assets retain their respective licenses and notices. [Third-party sources and licenses](THIRD_PARTY.md)
 
 ## Acknowledgments
 

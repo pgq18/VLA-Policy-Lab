@@ -6,11 +6,13 @@ VLA Policy Lab 是一个用于训练和评估机器人策略的 Python 框架。
 
 框架内置 VLA-JEPA、Wall-OSS、Diffusion Policy 和 LeRobot π₀.₅。任务包括电梯与桌面按键、抓取放置、方块堆叠和桌面收纳。在线训练可以冻结策略，学习初始噪声（DSRL）、动作残差或同时学习两者，也可以用 DPPO 微调动作专家。
 
-[快速开始](#快速开始) · [电梯按键教程](#按指定楼层的电梯按钮) · [框架指南](docs/project_framework.md) · [Agent skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
+[安装](#安装) · [示范数据微调](#用示范数据微调) · [在线强化学习](#在线强化学习训练) · [评估](#评估) · [框架指南](docs/project_framework.md) · [Agent skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
 
 ## 快速开始
 
-使用 Python **3.10 或 3.11**。Python 包名和命令名均为 `pressb`。在训练与推理环境中安装模型依赖，在仿真主机上安装 Isaac Sim 依赖，并在强化学习运行器环境中执行 `python -m pip install -e '.[online-rl]'`。[模型安装](docs/bundled_models.md) · [仿真环境安装](docs/rtx5090_setup.md)
+### 安装
+
+使用 Python **3.10 或 3.11**。Python 包名和命令名均为 `pressb`。在训练与推理主机上安装模型依赖，在仿真主机上安装 Isaac Sim。推理环境另需执行 `python -m pip install -e '.[inference-server]'`，运行器环境执行 `python -m pip install -e '.[online-rl]'`。[模型安装](docs/bundled_models.md) · [仿真环境安装](docs/rtx5090_setup.md)
 
 ```bash
 git clone https://github.com/pgq18/VLA-Policy-Lab.git
@@ -19,13 +21,9 @@ python -m pip install -e .
 pressb list
 ```
 
-## 按指定楼层的电梯按钮
+### 用示范数据微调
 
-PiPER 机械臂接收 24 至 35 层之间的目标楼层，按下对应按钮。以下三个阶段使用同一套 VLA-JEPA pose9 策略。先用示范数据做监督微调（SFT），再在电梯仿真中做在线强化学习（RL），最后关闭学习，统计完整回合的按键成功率。
-
-### 1. 用示范数据微调 VLA-JEPA
-
-在 SFT 主机上安装 [VLA-JEPA 训练依赖](src/pressb/model_sources/vlajepa/requirements-piper.txt)，并准备 **30 Hz 的 LeRobot 格式电梯示范数据**。每段示范保留到目标按键首次亮起的那一帧（press-prefix），包含全局和腕部相机图像。每层需有 100 个成功回合，共 1,200 个。读取数据时，工具中心点（TCP）的示范位姿会转换为 XYZ 位置和六维旋转表示。已有原始电梯示范数据时，可用 [press-prefix 导出脚本](scripts/export_press_dataset.py)生成训练集。
+微调 VLA-JEPA，让 PiPER 机械臂根据指令按下指定楼层的电梯按钮。在 SFT 主机上安装 [VLA-JEPA 训练依赖](src/pressb/model_sources/vlajepa/requirements-piper.txt)，并准备 **30 Hz 的 LeRobot 格式电梯示范数据**。每段示范保留到目标按键首次亮起的那一帧（press-prefix），包含全局和腕部相机图像。24 到 35 层每层需要 100 个成功回合，共 1,200 个。读取数据时，工具中心点（TCP）的示范位姿会转换为 XYZ 位置和六维旋转表示。已有原始电梯示范数据时，可用 [press-prefix 导出脚本](scripts/export_press_dataset.py)生成训练集。
 
 ```bash
 export PRESSB_DATASET_ROOT=/data/elevator/press_prefix_lerobot
@@ -45,7 +43,7 @@ torchrun --standalone --nproc-per-node=1 scripts/train_model.py \
 export PRESSB_SFT_CHECKPOINT="$PRESSB_RUN_ROOT/pose9/checkpoints/best"
 ```
 
-### 2. 选择一种方法做在线强化学习
+### 在线强化学习训练
 
 [电梯任务示例](examples/elevator/)共用同一组 SFT 权重，各自使用一个仿真环境。训练预算为 10,000 次交互，每次执行一个动作块，最多包含 7 个控制步。可按需要更新的策略参数选择方法。
 
@@ -54,23 +52,35 @@ export PRESSB_SFT_CHECKPOINT="$PRESSB_RUN_ROOT/pose9/checkpoints/best"
 | [`dsrl`](examples/elevator/dsrl.json) | SAC 的 actor 选择解码器的初始噪声 | 冻结的 SFT 策略 |
 | [`action_residual`](examples/elevator/action_residual.json) | SAC 的 actor 修正 XYZ 动作，每轴修正幅度最多 0.02 米 | 冻结的 SFT 策略 |
 | [`joint_residual`](examples/elevator/joint_residual.json) | 同一个 SAC actor 同时调整初始噪声和 XYZ 动作 | 冻结的 SFT 策略 |
-| [`residual_after_dsrl`](examples/elevator/residual_after_dsrl.json) | 固定 DSRL actor，从头训练 XYZ 残差 actor 和 critic 网络 | 同一组 SFT 权重**加上第一阶段的 DSRL 检查点** |
+| [`residual_after_dsrl`](examples/elevator/residual_after_dsrl.json) | 固定 DSRL actor，从头训练 XYZ 残差 actor 和 critic 网络 | 同一组 SFT 权重**加上训练好的 DSRL 检查点** |
 | [`dppo`](examples/elevator/dppo.json) | PPO 更新动作专家，并将每一版新权重同步到推理服务 | 推理和训练主机均加载 SFT 权重，采样使用 4 个去噪步 |
 
 **准备仿真环境。** 示例使用 `outputs/rtx5090_eval_comparison/input/` 下固定的训练场景。请准备场景文件 `config.json`、`scene.usda`、`dataset_metadata/meta/collection_metadata.json` 和 `assets/` 资产包，以及 PiPER 资产。示例默认在 GPU 0 上运行仿真，在 GPU 1 上运行推理与学习，各服务通过本机回环地址通信。请按实际部署调整设备编号和服务地址。[节点配置](docs/configurable_rl_nodes.md)
 
-**启动三个进程。** 在每个终端设置第一阶段的 `PRESSB_SFT_CHECKPOINT`、`PRESSB_QWEN_ROOT` 和 `PRESSB_VJEPA_ROOT`，路径应在各自主机上可读。选择一种方法，在三个终端设置相同的方法名和新的运行名称。切换方法时，修改 `METHOD` 并使用对应配置重新启动服务。
+在每个终端将 `PRESSB_SFT_CHECKPOINT` 设为微调后的权重目录，将 `PRESSB_QWEN_ROOT` 和 `PRESSB_VJEPA_ROOT` 设为各自的骨干模型目录。路径应在相应主机上可读。三个终端使用同一个方法名和新的运行名称。
 
 ```bash
 export METHOD=dsrl
 export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-train-01"
 ```
 
-| 终端 | 命令 |
-| --- | --- |
-| 1 · 推理 | `pressb inference --config "$CFG"` |
-| 2 · 仿真 | `pressb simulation --config "$CFG"` |
-| 3 · 训练 | 先执行 `pressb validate --config "$CFG"`，待两个服务就绪后执行 `pressb train --config "$CFG"` |
+在两个终端分别启动推理和仿真服务。等两个服务就绪后，在第三个终端启动学习器。
+
+```bash
+# 终端 1：模型环境
+pressb inference --config "$CFG"
+```
+
+```bash
+# 终端 2：Isaac Sim 环境
+pressb simulation --config "$CFG"
+```
+
+```bash
+# 终端 3：学习器环境，待两个服务就绪后运行
+pressb validate --config "$CFG"
+pressb train --config "$CFG"
+```
 
 训练结束后，从运行器的状态文件读取**实际保存的 RL 检查点路径**。SAC 和 DPPO 的检查点文件名不同。
 
@@ -80,7 +90,7 @@ export RL_CHECKPOINT="$(python -c 'import json,sys; print(json.load(open(sys.arg
 test -f "$RL_CHECKPOINT"
 ```
 
-使用两阶段方法时，先完成 `dsrl` 训练。将学习器终端得到的检查点路径复制到三个终端，设置以下变量，然后按上表重新启动三个进程。
+做两阶段训练时，先取出已完成的 DSRL 训练所保存的 `RL_CHECKPOINT`。在三个终端把它设为同一个检查点路径，再选择残差配置，重新启动两个服务和学习器。
 
 ```bash
 export PRESSB_DSRL_CHECKPOINT="$RL_CHECKPOINT"
@@ -90,14 +100,27 @@ export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-train-01"
 
 此时，固定的 DSRL 策略提供确定性的初始噪声，残差策略从头学习。训练完成后，重新读取本阶段的 `RL_CHECKPOINT`，并保留同一个 `PRESSB_DSRL_CHECKPOINT` 供评估使用。
 
-### 3. 在同一任务上评估 SFT 和 RL 策略
+### 评估
 
-每次评估时，在**三个终端**按下表设置该策略的 `CFG` 和 `ELEVATOR_RUN`。停止上一轮的服务，使用新配置重新启动推理和仿真，再在运行器终端执行评估命令。完成第一阶段后即可评估 SFT 基线。
+微调完成后即可评估 SFT 基线。在三个终端选择基础策略配置和新的运行名称，用该配置启动推理与仿真服务，然后在第三个终端执行评估命令。
 
-| 策略 | 配置和新的运行名称 | 运行器命令 |
-| --- | --- | --- |
-| SFT 基线 | `CFG=examples/elevator/base.json` · `export ELEVATOR_RUN=sft-eval-01` | `pressb eval --config "$CFG" --episodes 10 --seed 43` |
-| 训练后的 RL 策略 | `CFG="examples/elevator/$METHOD.json"` · `export ELEVATOR_RUN="$METHOD-eval-01"` | `pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43` |
+```bash
+# 三个终端
+export CFG=examples/elevator/base.json ELEVATOR_RUN=sft-eval-01
+
+# 运行器终端，待两个服务就绪后执行
+pressb eval --config "$CFG" --episodes 10 --seed 43
+```
+
+评估 RL 策略时，选择该方法的训练配置，用新配置重启推理和仿真服务。在运行器终端传入该方法保存的 RL 检查点。评估 `residual_after_dsrl` 时，三个终端还要保留原来的 `PRESSB_DSRL_CHECKPOINT`。
+
+```bash
+# 三个终端，METHOD 为训练时使用的配置名
+export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-eval-01"
+
+# 运行器终端
+pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43
+```
 
 要配对比较 DPPO 训练前后的表现，还需评估初始动作专家。使用 `dppo.json` 和新的运行名称，重新启动加载 SFT 权重的推理服务，评估命令省略 `--resume`。这样前后两次评估使用相同的 DPPO 采样器。各次评估还应使用相同的随机种子、楼层采样方式、回合超时设置及动作平滑设置。
 
@@ -111,12 +134,6 @@ export CFG="examples/elevator/$METHOD.json" ELEVATOR_RUN="$METHOD-train-01"
 - **使用 AI agent。** 调用 `$operate-vla-policy-lab` 选择实验配置、分配 GPU 并设置节点通信地址。[仓库内的 skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
 
 仓库收录可复用的代码、配置和指南。各次运行的检查点、日志、图表和录像保存在 Git 忽略的 `outputs/` 下。主要文档和 agent skill 默认使用英文，翻译版使用 `.zh-CN.md` 等语言后缀。
-
-## 项目信息与许可
-
-[贡献者](https://github.com/pgq18/VLA-Policy-Lab/graphs/contributors) · [版本历史](https://github.com/pgq18/VLA-Policy-Lab/commits/main/) · [反馈问题](https://github.com/pgq18/VLA-Policy-Lab/issues)
-
-VLA Policy Lab 的原创代码采用 [MIT 许可证](LICENSE)。第三方代码、模型和机器人资产沿用各自的许可与声明。[第三方来源与许可](THIRD_PARTY.md)
 
 ## 致谢
 
