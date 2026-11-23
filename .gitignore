@@ -73,7 +73,10 @@ htmlcov/
 .DS_Store
 /.idea/
 /.vscode/
-/.agents/
+/.agents/*
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/operate-vla-policy-lab/
 /.codex/
 
 # Local credentials/configuration; retain documented examples if added.

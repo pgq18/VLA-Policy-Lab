@@ -1,0 +1,34 @@
+{
+  "extends": "../../../../configs/experiments/pap_walloss_eval.json",
+  "name": "pap_walloss_lan_eval",
+  "task": {
+    "config": {
+      "python": "${env:VLA_SIM_PYTHON}",
+      "trajectory": "${env:VLA_PAP_TRAJECTORY}",
+      "gpu_ids": [0],
+      "num_envs": 1
+    }
+  },
+  "model": {
+    "config": {
+      "model_path": "${env:VLA_WALL_MODEL_DIR}",
+      "norm_stats": "${env:VLA_WALL_MODEL_DIR}/norm_stats.json",
+      "device": "cuda:0"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"host": "${env:VLA_INFER_HOST}", "port": 18131, "transport": "ws"}, "service": {"batch_size": 1}},
+    "simulation": {"server": {"host": "${env:VLA_SIM_HOST}", "port": 18101, "transport": "http"}}
+  },
+  "run": {
+    "method": "base",
+    "mode": "eval",
+    "device": "cpu",
+    "endpoints": {
+      "inference": "ws://${env:VLA_INFER_HOST}:18131",
+      "simulation": "http://${env:VLA_SIM_HOST}:18101"
+    },
+    "rollout": {"num_envs": 1, "eval_episodes": 10},
+    "output_dir": "${project_root}/outputs/pap_walloss_lan_eval/run"
+  }
+}

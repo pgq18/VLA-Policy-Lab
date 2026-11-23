@@ -6,6 +6,8 @@ VLA Policy Lab is a Python framework for collecting robot trajectories, evaluati
 
 The task plugins cover button pressing, pick-and-place with PiPER or Franka Research 3, cube stacking, and tabletop cleanup. Model adapters support Wall-OSS, VLA-JEPA, Diffusion Policy, and LeRobot π₀.₅. Online training options include DSRL, action residuals, and DPPO.
 
+For AI agents, use `$operate-vla-policy-lab` to select a recipe, place nodes on hosts and verify their connections. [Repository skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
+
 ## Quick start
 
 Activate a Python 3.10 or 3.11 environment, then install the core package. The Python package and experiment command are both named `pressb`.

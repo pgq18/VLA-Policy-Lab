@@ -6,6 +6,8 @@ VLA Policy Lab 是一个机器人策略框架，用于采集轨迹、评估视�
 
 任务插件涵盖按键、PiPER 或 Franka Research 3 的抓取放置、方块堆叠和桌面收纳。模型适配器支持 Wall-OSS、VLA-JEPA、Diffusion Policy 和 LeRobot π₀.₅。在线训练支持 DSRL、动作残差学习和 DPPO。
 
+在 AI agent 中使用 `$operate-vla-policy-lab`，可以按任务选择配置、分配节点和验证跨机连接。[仓库内的 skill](.agents/skills/operate-vla-policy-lab/SKILL.md)
+
 ## 快速开始
 
 激活 Python 3.10 或 3.11 环境后，安装核心包。Python 包名和实验命令均为 `pressb`。
