@@ -1,0 +1,20 @@
+{
+  "extends": "elevator_vlajepa_dsrl.json",
+  "name": "elevator_vlajepa_eval",
+  "task": {
+    "config": {
+      "num_envs": 1,
+      "output": "${project_root}/outputs/elevator_eval_01/simulation"
+    }
+  },
+  "model": {
+    "config": {"device": "cuda:0"}
+  },
+  "run": {
+    "method": "base",
+    "mode": "eval",
+    "device": "cpu",
+    "rollout": {"num_envs": 1, "eval_episodes": 10},
+    "output_dir": "${project_root}/outputs/elevator_eval_01/run"
+  }
+}

@@ -20,6 +20,7 @@ SFT_SOURCE_ADAPTATIONS = {
     "starVLA/dataloader/piper_lerobot.py",
     "starVLA/dataloader/table_buttons_lerobot.py",
     "starVLA/dataloader/table_buttons_multitask_lerobot.py",
+    "starVLA/inference/piper_policy.py",
     "starVLA/training/train_piper.py",
     "starVLA/training/train_table_buttons.py",
     "starVLA/training/train_table_buttons_multitask.py",
@@ -34,7 +35,10 @@ FIXTURE_PATH_ADAPTATIONS = {
 
 
 def test_bundled_vlajepa_source_inventory():
-    manifest = json.loads((SOURCE / "source_manifest.json").read_text())
+    manifest_bytes = (SOURCE / "source_manifest.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
+    lock = json.loads((Path(__file__).resolve().parents[1] / "repos.lock.json").read_text())
+    assert hashlib.sha256(manifest_bytes).hexdigest() == lock["repositories"]["VLA-JEPA"]["bundled_manifest_sha256"]
     assert manifest["commit"] == "9c9dc71c8e199c7428b25d103ab666395832c001"
     assert set(manifest["profiles"]) == {
         "pose9", "joint6", "joint7", "joint6_multitask", "joint7_multitask", "joint7_generic"}
@@ -59,11 +63,35 @@ def test_bundled_vlajepa_source_inventory():
         "starVLA/model/framework/VLA_JEPA.py",
         "starVLA/model/modules/vlm/QWen3.py",
         "starVLA/model/modules/action_model/GR00T_ActionHeader.py",
-        "starVLA/inference/piper_policy.py",
         "starVLA/training/train_table_buttons_multitask_joint6.py",
     ):
         item = manifest["files"][relative]
         assert item["sha256"] == item["source_sha256"], relative
+
+
+def test_pose9_inference_reads_trainer_augmentation_contract():
+    pytest.importorskip("torch")
+    OmegaConf = pytest.importorskip("omegaconf").OmegaConf
+    from pressb.model_sources.vlajepa.starVLA.inference.piper_policy import validate_config_contract
+    from pressb.model_sources.vlajepa.starVLA.training.train_piper import training_contract
+
+    config = OmegaConf.to_container(OmegaConf.load(SOURCE / "scripts/configs/vlajepa_piper_ft.yaml"), resolve=True)
+    expected, _ = training_contract(config)
+    validate_config_contract(config, expected)
+
+    transforms = config.pop("image_transforms")
+    with pytest.raises(ValueError, match="training contract"):
+        validate_config_contract(config, expected)
+    legacy, _ = training_contract(config)
+    validate_config_contract(config, legacy)
+
+    config["image_transforms"] = {**transforms, "enable": False}
+    with pytest.raises(ValueError, match="training contract"):
+        validate_config_contract(config, expected)
+    config["image_transforms"] = transforms
+    transforms["tfs"] = dict(reversed(list(transforms["tfs"].items())))
+    with pytest.raises(ValueError, match="training contract"):
+        validate_config_contract(config, expected)
 
 
 @pytest.mark.parametrize("dimension,state_dimension", [(9, 9), (6, 7), (7, 7)])

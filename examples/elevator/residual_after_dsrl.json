@@ -1,0 +1,6 @@
+{
+  "extends": "action_residual.json",
+  "run": {
+    "frozen_dsrl": {"checkpoint": "${env:PRESSB_DSRL_CHECKPOINT}", "deterministic": true}
+  }
+}

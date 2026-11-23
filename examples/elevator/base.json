@@ -1,0 +1,14 @@
+{
+  "extends": "../../configs/experiments/elevator_vlajepa_eval.json",
+  "name": "elevator_${env:ELEVATOR_RUN}",
+  "model": {
+    "config": {
+      "checkpoint": "${env:PRESSB_SFT_CHECKPOINT}",
+      "base_vlm": "${env:PRESSB_QWEN_ROOT}",
+      "base_encoder": "${env:PRESSB_VJEPA_ROOT}",
+      "device": "cuda:1"
+    }
+  },
+  "task": {"config": {"output": "${project_root}/outputs/elevator/${env:ELEVATOR_RUN}/simulation"}},
+  "run": {"output_dir": "${project_root}/outputs/elevator/${env:ELEVATOR_RUN}/run"}
+}

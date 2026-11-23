@@ -14,6 +14,7 @@ import numpy as np
 
 from pressb.runtime.contract import decode_image, finite_array, fingerprint, validate_observation
 from pressb.runtime.image_transport import ValidatedObservation
+from .vlajepa_source_identity import inference_source_revision
 
 
 ELEVATOR_INSTRUCTION_PATTERN = r"Press (?:2[4-9]|3[0-5]) floor\."
@@ -60,9 +61,10 @@ class VLAJEPABackend:
             checkpoint_sha256=source["checkpoint_sha256"],
             checkpoint_step=source["checkpoint_step"], provenance=source.get("provenance", {}),
             source_identity=source.get("source_identity", {}),
-            source_revision=fingerprint({
+            source_revision=inference_source_revision({
                 "model_source": {k: v for k, v in source.get("source_identity", {}).items() if k != "vla_repo"},
-                "adapter": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}),
+                "adapter": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+                getattr(getattr(frozen_backend, "policy", None), "config", None)),
             model_config_sha256=fingerprint({**{k: source.get(k) for k in
                 ("num_inference_timesteps", "normalization", "resolution", "image_preprocess_device",
                  "pose_frame", "pose_link", "controller_gripper_width_m")},

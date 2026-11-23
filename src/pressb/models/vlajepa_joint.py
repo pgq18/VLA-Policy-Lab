@@ -23,6 +23,7 @@ from pressb.model_sources import activate_source, builtin_source_root, source_tr
 from pressb.runtime import contract as runtime_contract, image_transport
 from pressb.runtime.contract import decode_image, finite_array, fingerprint, validate_observation
 from pressb.runtime.image_transport import ValidatedObservation
+from .vlajepa_source_identity import inference_source_revision
 
 
 NAMES = [f"joint{i}" for i in range(1, 7)] + ["gripper_width"]
@@ -46,6 +47,19 @@ def _sha256(path):
         for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _inference_sources(repo):
+    from . import vlajepa_backend
+
+    sources = {name: _sha256(repo / name) for name in (
+        "starVLA/inference/piper_policy.py", "starVLA/model/framework/VLA_JEPA.py",
+        "starVLA/model/modules/action_model/GR00T_ActionHeader.py", "starVLA/model/modules/vlm/QWen3.py")}
+    sources.update(adapter=_sha256(__file__), sampler=_sha256(vlajepa_backend.__file__),
+                   runtime_contract=_sha256(runtime_contract.__file__), image_transport=_sha256(image_transport.__file__))
+    if repo == builtin_source_root("vlajepa").resolve():
+        sources["bundled_model_source"] = source_tree_sha256("vlajepa", repo)
+    return sources
 
 
 def validate_joint_schema(schema, normalization):
@@ -373,17 +387,10 @@ def create_backend(config):
     helpers.disable_unused_qwen_cache(model)
     model.to(device).requires_grad_(False).eval()
     cfg.framework.qwenvl.device_map = str(device)
-    from . import vlajepa_backend
-    sources = {name: _sha256(repo / name) for name in (
-        "starVLA/inference/piper_policy.py", "starVLA/model/framework/VLA_JEPA.py",
-        "starVLA/model/modules/action_model/GR00T_ActionHeader.py", "starVLA/model/modules/vlm/QWen3.py")}
-    sources.update(adapter=_sha256(__file__), sampler=_sha256(vlajepa_backend.__file__),
-                   runtime_contract=_sha256(runtime_contract.__file__), image_transport=_sha256(image_transport.__file__))
-    if repo == builtin_source_root("vlajepa").resolve():
-        sources["bundled_model_source"] = source_tree_sha256("vlajepa", repo)
     policy = SimpleNamespace(model=model, device=device, resolution=int(cfg.datasets.vla_data.resolution_size),
         schema=checked["schema"], normalization=checked["normalization"], allowed_instructions=checked["allowed_instructions"],
         identity=dict(model_id=checked["config"]["run_id"], model_sha256=digest,
-            checkpoint_step=checked["manifest"]["step"], source_revision=fingerprint(sources),
+            checkpoint_step=checked["manifest"]["step"],
+            source_revision=inference_source_revision(_inference_sources(repo), checked["config"]),
             config_sha256=_sha256(checked["run"] / "config.yaml")))
     return JointVLAJEPABackend(policy, instruction_pattern=config.get("instruction_pattern"))

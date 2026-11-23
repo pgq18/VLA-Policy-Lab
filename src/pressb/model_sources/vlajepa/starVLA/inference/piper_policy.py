@@ -123,6 +123,12 @@ def validate_config_contract(config, expected):
     actual = dict(seed=config["seed"], framework=framework,
                   data={key: config["datasets"]["vla_data"][key] for key in expected["data"]},
                   trainer={key: config["trainer"][key] for key in expected["trainer"]})
+    if "image_transforms" in expected and "image_transforms" in config:
+        from pressb.training.image_transforms import normalize_image_transforms_config
+
+        transforms = normalize_image_transforms_config(config["image_transforms"])
+        actual["image_transforms"] = transforms
+        actual["image_transform_order"] = list(transforms["tfs"])
     if actual != expected:
         raise ValueError("config.yaml differs from the saved training contract")
     if (config["framework"]["qwenvl"].get("init_from_config") is not True

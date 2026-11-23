@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "pressb"
 version = "0.1.0"
 description = "Modular robot policy inference, supervised training and online RL with simulated or physical environments"
+# The Isaac Sim environment pins packaging 23, which predates SPDX expression parsing.
+license = {text = "MIT"}
 requires-python = ">=3.10,<3.12"
 dependencies = ["numpy<2", "scipy", "Pillow", "matplotlib"]
 
@@ -20,6 +22,9 @@ real-robot = ["piper_sdk", "pyrealsense2", "websockets>=14,<16", "msgpack>=1,<2"
 pap = ["av", "pyarrow", "websockets>=12,<16", "msgpack>=1,<2"]
 diffusion-policy = ["torch>=2.6", "torchvision", "einops", "PyYAML", "pyarrow", "av"]
 table-buttons = ["pin==2.7.0", "hpp-fcl==2.4.4"]
+
+[tool.setuptools]
+license-files = ["LICENSE", "THIRD_PARTY.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

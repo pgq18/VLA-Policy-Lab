@@ -131,6 +131,26 @@ def test_shipped_experiments_validate(path, capsys):
     assert json.loads(capsys.readouterr().out)["valid"] is True
 
 
+@pytest.mark.parametrize("recipe", ["base", "dsrl", "action_residual", "joint_residual", "residual_after_dsrl", "dppo"])
+def test_elevator_walkthrough_uses_selected_checkpoints(recipe, tmp_path, monkeypatch, capsys):
+    for var in ("PRESSB_SFT_CHECKPOINT", "PRESSB_QWEN_ROOT", "PRESSB_VJEPA_ROOT", "PRESSB_DSRL_CHECKPOINT"):
+        monkeypatch.setenv(var, str(tmp_path / var))
+    monkeypatch.setenv("ELEVATOR_RUN", f"{recipe}-test")
+    path = PROJECT_ROOT / "examples/elevator" / f"{recipe}.json"
+    assert main(["validate", "--config", str(path)]) == 0
+    nodes = json.loads(capsys.readouterr().out)["nodes"]
+    run, model = nodes["trainer"], nodes["inference"]["backend"]
+    assert model["config"]["checkpoint"] == str(tmp_path / "PRESSB_SFT_CHECKPOINT")
+    if recipe == "dppo":
+        assert run["model"] == model
+    if recipe == "residual_after_dsrl":
+        assert run["method"] == "action_residual"
+        assert run["frozen_dsrl"]["checkpoint"] == str(tmp_path / "PRESSB_DSRL_CHECKPOINT")
+    else:
+        assert run["method"] == recipe
+        assert not run.get("frozen_dsrl")
+
+
 def test_service_cli_does_not_import_trainer_or_models(tmp_path):
     # Prepare/validate are CPU commands; actual service startup must remain lazy.
     script = "import pressb.experiments.cli,sys; assert 'pressb.runtime.trainer' not in sys.modules; assert 'torch' not in sys.modules"

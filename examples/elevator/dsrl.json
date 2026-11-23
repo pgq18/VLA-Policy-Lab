@@ -1,0 +1,11 @@
+{
+  "extends": "base.json",
+  "run": {
+    "method": "dsrl",
+    "mode": "train",
+    "device": "cuda:1",
+    "learner": {"seed": 42},
+    "rollout": {"max_transitions": 10000},
+    "checkpoint": {"interval": 10000}
+  }
+}

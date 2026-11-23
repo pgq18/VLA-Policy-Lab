@@ -1,0 +1,4 @@
+{
+  "extends": "action_residual.json",
+  "run": {"method": "joint_residual"}
+}

@@ -24,7 +24,7 @@ The VLA-JEPA manifest preserves the original file index so existing checkpoints 
 
 `prepare_wrist_asset.py` extracts the manufacturer's mount and camera subtrees in an isolated OpenUSD 24.11 environment for compatibility with Isaac Sim 4.5. It preserves the mesh points and topology. Generated files and provenance records are stored in `assets/generated/official_wrist/` and are excluded from Git.
 
-This repository has not specified an open-source license for its own code. Public access does not grant a license. Each third-party component remains subject to its own license.
+The original VLA Policy Lab code is distributed under the [MIT License](LICENSE). Third-party code, weights, and assets retain their respective upstream licenses and notices.
 
 Bundled model source files retain their existing per-file copyright and SPDX notices. Bundling grants no additional license. The VLA-JEPA source tree lacked the LICENSE file referenced in its `pyproject.toml`. The original MIT declaration is preserved separately as metadata. The Wall-X source tree also lacked a top-level LICENSE, and its original `setup.py` contained only a BSD license classifier. The repository does not treat these metadata declarations as a single license grant covering every file or supply reconstructed text for missing licenses. The two `source_manifest.json` files record each file's source, original hash, and local modifications.
 

@@ -13,7 +13,7 @@
       "pin_reason": "Existing RL checkpoints bind the VLA Git commit, absolute source path, model/addon source hashes and model weights. Documentation publication must not silently change runtime identity.",
       "bundled_path": "src/pressb/model_sources/vlajepa",
       "bundled_manifest": "src/pressb/model_sources/vlajepa/source_manifest.json",
-      "bundled_manifest_sha256": "cd9a6aa0a49b588675a177adef1f2024e18174e57d100a2d61b6569607e9bed4"
+      "bundled_manifest_sha256": "4ee035f38b020d159fa59e2105ad52fe71a525b98170fcee1f64d2d94b7af533"
     },
     "ZPRL": {
       "url": "https://github.com/pgq18/ZPRL-PressB.git",

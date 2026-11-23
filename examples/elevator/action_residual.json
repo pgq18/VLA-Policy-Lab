@@ -1,0 +1,7 @@
+{
+  "extends": "dsrl.json",
+  "run": {
+    "method": "action_residual",
+    "learner": {"residual_mode": "xyz", "residual_scale": [0.02, 0.02, 0.02]}
+  }
+}

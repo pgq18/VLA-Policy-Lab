@@ -1,0 +1,24 @@
+{
+  "extends": "../../configs/experiments/elevator_vlajepa_dppo.json",
+  "name": "elevator_${env:ELEVATOR_RUN}",
+  "model": {
+    "config": {
+      "checkpoint": "${env:PRESSB_SFT_CHECKPOINT}",
+      "base_vlm": "${env:PRESSB_QWEN_ROOT}",
+      "base_encoder": "${env:PRESSB_VJEPA_ROOT}"
+    }
+  },
+  "task": {
+    "config": {
+      "output": "${project_root}/outputs/elevator/${env:ELEVATOR_RUN}/simulation",
+      "physics_backend": "gpu",
+      "floor_sampling": "random",
+      "num_envs": 1
+    }
+  },
+  "run": {
+    "rollout": {"num_envs": 1, "eval_episodes": 10, "max_transitions": 10000},
+    "checkpoint": {"interval": 10000},
+    "output_dir": "${project_root}/outputs/elevator/${env:ELEVATOR_RUN}/run"
+  }
+}

@@ -149,10 +149,11 @@
       "source_sha256": "1e25efab74023163e14799b52eec685220bc51a43193b9aa2d42b022b8673120"
     },
     "starVLA/inference/piper_policy.py": {
-      "bytes": 19732,
+      "bytes": 20089,
       "origin": "local_checkout",
-      "sha256": "37d80380f2dfaf34f111e324a3f9db76acfffb904d47c7446cb7f5e0cbdaa447",
-      "source_sha256": "37d80380f2dfaf34f111e324a3f9db76acfffb904d47c7446cb7f5e0cbdaa447"
+      "sha256": "f50df70ac5905c0bce95291a8694c5ee616ed8d718644da7508e3119e031a7c4",
+      "source_sha256": "37d80380f2dfaf34f111e324a3f9db76acfffb904d47c7446cb7f5e0cbdaa447",
+      "adaptation": "Validate image augmentation settings and their saved order in pose9 training contracts, including legacy checkpoints that omit these fields."
     },
     "starVLA/inference/table_buttons_joint6_policy.py": {
       "bytes": 16041,
