@@ -48,4 +48,6 @@ pressb eval --config configs/experiments/pap_walloss_eval.json --output outputs/
 
 ## 仓库内容
 
+主要文档和 agent skill（含描述和参考指南）默认使用英文。翻译版文档使用 `.zh-CN.md` 等语言后缀。
+
 Git 仓库收录可复用的代码、实验配置和使用文档。每次运行生成的结果、日志、图表、录像和检查点统一存放在 Git 忽略的 `outputs/` 目录。数据集及预训练权重需另行准备。第三方组件的来源、版本与许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。

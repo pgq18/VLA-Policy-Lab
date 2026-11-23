@@ -48,4 +48,6 @@ Use `pressb train` with an online RL recipe, `pressb collect` to record trajecto
 
 ## Repository contents
 
+Use English for primary documentation and agent skills, including skill descriptions and references. Use a language suffix such as `.zh-CN.md` for translated guides.
+
 Keep reusable code, experiment definitions, and setup instructions in Git. Write run-specific results, logs, plots, recordings, and checkpoints under the ignored `outputs/` directory. Supply datasets and pretrained weights separately. Third-party sources, versions, and license notices are listed in [THIRD_PARTY.md](THIRD_PARTY.md).

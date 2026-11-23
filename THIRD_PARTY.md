@@ -1,44 +1,40 @@
-# 第三方软件与资产来源
+# Third-party software and asset sources
 
-PiPER 机器人、腕部相机和 NVIDIA 场景资产由 `scripts/fetch_assets.py` 按固定来源下载并校验 SHA-256。来源与许可声明见 [assets/sources.lock.json](assets/sources.lock.json)。
+`scripts/fetch_assets.py` downloads the PiPER robot, wrist camera, and NVIDIA scene assets from pinned sources and verifies their SHA-256 hashes. The [asset manifest](assets/sources.lock.json) lists the sources and license notices.
 
-仓库随附的 FR3 URDF 和机械臂、夹爪网格位于 `assets/robots/fr3/`。该目录保留了 Franka Robotics 对 `franka_description` 文件的 Apache-2.0 许可和版权声明，并记录了控制器 URDF 的来源。[资产说明](assets/robots/fr3/README.md) · [LICENSE](assets/robots/fr3/LICENSE) · [NOTICE](assets/robots/fr3/NOTICE)
+The bundled FR3 URDF and the arm and gripper meshes are in `assets/robots/fr3/`. This directory preserves Franka Robotics' Apache-2.0 license and copyright notices for the `franka_description` files and documents the source of the controller URDF. [Asset notes](assets/robots/fr3/README.md) · [LICENSE](assets/robots/fr3/LICENSE) · [NOTICE](assets/robots/fr3/NOTICE)
 
-| 来源 | 固定版本 / 提交 | 使用范围与许可说明 |
+| Source | Pinned version or commit | Usage and license notes |
 |---|---|---|
-| NVIDIA Isaac Sim | 当前 5090 环境 5.0.0；原采集环境 4.5.0 | 物理仿真与渲染；遵守 NVIDIA 软件许可 |
-| Isaac Lab | 当前 v2.2.0；历史 v2.0.2 | 独立下载到 `vendor/IsaacLab`；适用其上游许可 |
-| AgileX `robot_lab` | `b868140eeb1459acefef24a865587ec39a5278c3` | PiPER URDF/USD/网格；下载时同时保存上游 Apache-2.0 LICENSE |
-| AgileX `piper_isaac_sim` | `8e1f88fdb7afca49c40e9a0c1c01cc588e86f0d2` | 原厂相机支架与 D435；该提交无根 LICENSE，Piper 包声明不能视为完整授权，不对其几何另行推定许可 |
-| Intel RealSense description | 上述固定源树中 `_d435.urdf.xacro`、D435 网格和包声明 | 保留源文件中的 Intel 许可声明与归属信息 |
-| NVIDIA Isaac 4.5 内容库 | 逐文件 SHA-256 | 桌子、支架及材质；适用 NVIDIA 的资产使用条款 |
-| ZPRL / ZPRL-PressB | 方法来源 `a34a1cba029702af82c0fed873be9e0e6bd274b3` | [SAC 适配代码](src/pressb/runtime/learner.py)保留上游 MIT 许可声明。参考仓库可独立克隆。 |
-| VLA-JEPA PiPER 适配 | 来源版本 `9c9dc71c8e199c7428b25d103ab666395832c001`，另含 H200 的 joint／多任务工作区模块 | 推理、训练和数据代码已内置 `src/pressb/model_sources/vlajepa`，来源和逐文件 SHA 见其中清单；不含权重 |
-| Wall-X / Wall-OSS | 来源和本地修改摘要见 `src/pressb/model_sources/walloss/source_manifest.json` | 模型、推理、训练、数据和 CUDA 源码已内置；原源码版权头保留；不含权重或编译二进制 |
-| NVIDIA CUTLASS | `e51efbfe18fe4f4cbb66ab814c55bf4aa0185491` | 仅构建 Wall-OSS CUDA 扩展时获取到缓存；原许可文本保留于 Wall-OSS 源码包的 `licenses/` |
-| DPPO / Diffusion Policy | `cc7234ad7ff39a8f32de3af903606723a16f0648` | MIT；`src/pressb/model_sources/diffusion_policy` 内置条件 UNet、DDPM/DDIM 公式及依赖模块，保留 LICENSE 和逐文件原始／适配后 SHA-256；PressB 添加视觉编码、LeRobot 训练和节点接口，不包含上游模型权重 |
-| Physical Intelligence、Hugging Face LeRobot / π₀.₅ | `d324ffe810d17264a0b1e628698aa1fa09aa639c`（包版本 0.4.5） | 内置策略、流匹配目标、配置和 π₀.₅ 专用处理器，保留上游 [LICENSE](src/pressb/model_sources/pi05/LICENSE)（Apache-2.0）及[逐文件来源与 SHA-256](src/pressb/model_sources/pi05/source_manifest.json)。共享 LeRobot 运行库由 `scripts/install_pi05.py` 校验归档后安装，权重单独获取。 |
-| Ascend PyTorch 扩展 / CANN | 已验证 `torch_npu 2.10.0`、PyTorch 2.10.0、CANN 9.0.0 | 运行时依赖单独安装；不在仓库分发驱动、工具包或二进制。环境配套及验证范围见 `docs/ascend_pi05.md` |
+| NVIDIA Isaac Sim | 5.0.0 in the current 5090 environment, 4.5.0 in the original data collection environment | Physics simulation and rendering are subject to NVIDIA's software license. |
+| Isaac Lab | v2.2.0 in the current environment, v2.0.2 in earlier environments | Downloaded separately to `vendor/IsaacLab` under its upstream license. |
+| AgileX `robot_lab` | `b868140eeb1459acefef24a865587ec39a5278c3` | PiPER URDF, USD, and meshes. The download includes the upstream Apache-2.0 LICENSE. |
+| AgileX `piper_isaac_sim` | `8e1f88fdb7afca49c40e9a0c1c01cc588e86f0d2` | Manufacturer's camera mount and D435. This commit has no root LICENSE. The Piper package declaration alone does not establish a complete license grant. No separate license is assumed for the geometry. |
+| Intel RealSense description | `_d435.urdf.xacro`, D435 meshes, and package declaration in the pinned `piper_isaac_sim` source tree | The source files retain Intel's license notices and attribution. |
+| NVIDIA Isaac 4.5 content library | Per-file SHA-256 hashes | Tables, supports, and materials are subject to NVIDIA's asset terms of use. |
+| ZPRL / ZPRL-PressB | Method source at `a34a1cba029702af82c0fed873be9e0e6bd274b3` | The [adapted SAC code](src/pressb/runtime/learner.py) retains the upstream MIT license notice. The reference repository can be cloned separately. |
+| VLA-JEPA PiPER adaptation | Source revision `9c9dc71c8e199c7428b25d103ab666395832c001`, plus joint-space and multitask modules from the H200 workspace | Inference, training, and data code is bundled in `src/pressb/model_sources/vlajepa`. Its manifest records the sources and per-file hashes. Weights are not included. |
+| Wall-X / Wall-OSS | `src/pressb/model_sources/walloss/source_manifest.json` records the sources and summarizes local changes | The bundled model, inference, training, data, and CUDA source code retains the original copyright headers. Weights and compiled binaries are not included. |
+| NVIDIA CUTLASS | `e51efbfe18fe4f4cbb66ab814c55bf4aa0185491` | Downloaded to the cache only when building the Wall-OSS CUDA extension. The Wall-OSS source package preserves the original license text in `licenses/`. |
+| DPPO / Diffusion Policy | `cc7234ad7ff39a8f32de3af903606723a16f0648` | MIT. `src/pressb/model_sources/diffusion_policy` bundles the conditional UNet, DDPM/DDIM equations, and their dependencies. It retains the LICENSE and per-file SHA-256 hashes for both original and adapted files. PressB adds visual encoding, LeRobot training, and node interfaces. Upstream model weights are not included. |
+| Physical Intelligence, Hugging Face LeRobot / π₀.₅ | `d324ffe810d17264a0b1e628698aa1fa09aa639c` (package version 0.4.5) | The bundled policy, flow-matching objective, configuration, and π₀.₅-specific processors retain the upstream Apache-2.0 [LICENSE](src/pressb/model_sources/pi05/LICENSE) and [per-file sources and SHA-256 hashes](src/pressb/model_sources/pi05/source_manifest.json). `scripts/install_pi05.py` verifies the archive before installing the shared LeRobot runtime. Weights are obtained separately. |
+| Ascend PyTorch extension / CANN | Verified with `torch_npu 2.10.0`, PyTorch 2.10.0, and CANN 9.0.0 | Runtime dependencies are installed separately. This repository does not distribute drivers, toolkits, or binaries. See `docs/ascend_pi05.md` for compatible environment components and the scope of validation. |
 
-VLA-JEPA 清单保留原始文件索引，以便已有检查点校验源码身份。其中两份桌面按键训练记录仅保留在清单中的哈希，正文不随框架分发。
+The VLA-JEPA manifest preserves the original file index so existing checkpoints can verify the source code they were built against. For two tabletop button-press training records, the manifest retains only their hashes. The framework does not distribute their contents.
 
-`prepare_wrist_asset.py` 在隔离的 OpenUSD 24.11 中提取官方支架与相机子树，以兼容 Isaac Sim 4.5。它保留网格点与拓扑，生成文件及来源记录位于 `assets/generated/official_wrist/`，不提交 Git。
+`prepare_wrist_asset.py` extracts the manufacturer's mount and camera subtrees in an isolated OpenUSD 24.11 environment for compatibility with Isaac Sim 4.5. It preserves the mesh points and topology. Generated files and provenance records are stored in `assets/generated/official_wrist/` and are excluded from Git.
 
-本仓库尚未指定自有代码的开源许可证。公开可见不替代许可授权；第三方组件始终遵循各自的许可。
+This repository has not specified an open-source license for its own code. Public access does not grant a license. Each third-party component remains subject to its own license.
 
-模型内化保留已有逐文件版权／SPDX 声明，不另行授予许可。所用 VLA-JEPA
-源树未包含其 `pyproject.toml` 引用的 LICENSE 文件，原元数据的 MIT 声明单独保留；
-Wall-X 源树也无顶层 LICENSE，原 `setup.py` 只有 BSD classifier。
-未把这些元数据推定为全部文件的统一授权，也未补造缺失的许可原文。
-各文件来源、原始摘要与本地改动见两份 `source_manifest.json`。
+Bundled model source files retain their existing per-file copyright and SPDX notices. Bundling grants no additional license. The VLA-JEPA source tree lacked the LICENSE file referenced in its `pyproject.toml`. The original MIT declaration is preserved separately as metadata. The Wall-X source tree also lacked a top-level LICENSE, and its original `setup.py` contained only a BSD license classifier. The repository does not treat these metadata declarations as a single license grant covering every file or supply reconstructed text for missing licenses. The two `source_manifest.json` files record each file's source, original hash, and local modifications.
 
-第三方仓库的固定版本与用途见 [repos.lock.json](repos.lock.json)。
+The [repository manifest](repos.lock.json) lists the pinned revisions and uses of third-party repositories.
 
-上游链接：
+## Upstream links
 
 - [Isaac Lab](https://github.com/isaac-sim/IsaacLab/tree/v2.0.2)
 - [AgileX robot_lab](https://github.com/agilexrobotics/robot_lab/tree/b868140eeb1459acefef24a865587ec39a5278c3)
 - [AgileX piper_isaac_sim](https://github.com/agilexrobotics/piper_isaac_sim/tree/8e1f88fdb7afca49c40e9a0c1c01cc588e86f0d2)
-- [NVIDIA Omniverse 软件许可](https://docs.omniverse.nvidia.com/platform/latest/common/NVIDIA_Omniverse_License_Agreement.html)
+- [NVIDIA Omniverse software license](https://docs.omniverse.nvidia.com/platform/latest/common/NVIDIA_Omniverse_License_Agreement.html)
 - [DPPO](https://github.com/irom-princeton/dppo/tree/cc7234ad7ff39a8f32de3af903606723a16f0648)
 - [LeRobot π₀.₅](https://github.com/huggingface/lerobot/tree/d324ffe810d17264a0b1e628698aa1fa09aa639c/src/lerobot/policies/pi05)
