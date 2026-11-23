@@ -1,0 +1,21 @@
+{
+  "extends": "../../../configs/experiments/elevator_vlajepa_joint_residual.json",
+  "name": "autodl_elevator",
+  "task": {
+    "config": {
+      "num_envs": 2,
+      "gpu": 0
+    }
+  },
+  "model": {
+    "config": {
+      "device": "cuda:1"
+    }
+  },
+  "run": {
+    "device": "cuda:2",
+    "rollout": {
+      "num_envs": 2
+    }
+  }
+}

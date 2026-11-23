@@ -1,0 +1,44 @@
+{
+  "extends": "pap_walloss_dppo.json",
+  "name": "pap_plus_walloss_dppo_h200_400k",
+  "description": "Fresh original Wall-OSS action-expert DPPO on PAP+ with the current +X6cm box offset. H200 inference/learner, local GPU PhysX. Performance profile must pass real numerical and end-to-end qualification before launch.",
+  "task": {
+    "plugin": "pap_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus.json",
+      "trajectory": "${project_root}/outputs/piper_pap_reconstruction_20261022/dataset_audit/episode_000000.npz",
+      "num_envs": 256,
+      "physics_backend": "gpu",
+      "render_resolution": [320, 240],
+      "log_dir": "${project_root}/outputs/pap_plus_walloss_dppo400k_h200_20261116/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {"port": 19510, "max_message_bytes": 536870912},
+      "service": {
+        "batch_size": 64,
+        "cache_size": 512,
+        "action_expert": {
+          "transition_std": 0.03,
+          "denoising_steps": 10,
+          "transition_microbatch_size": 32,
+          "transition_context_length": 256,
+          "frozen_prefix_cache": true,
+          "prefix_cache_max_entries": 1024
+        }
+      }
+    },
+    "simulation": {"server": {"port": 19511}}
+  },
+  "run": {
+    "device": "cuda:0",
+    "seed": 42,
+    "endpoints": {"inference": "ws://127.0.0.1:19510", "simulation": "http://127.0.0.1:19511", "timeout": 600, "max_message_bytes": 536870912},
+    "rollout": {"max_transitions": 400000, "num_envs": 256, "eval_episodes": 256},
+    "dppo": {"rollout_steps": 4, "minibatch_size": 32, "critic_warmup_iterations": 2, "critic_continue_after_kl": true},
+    "checkpoint": {"interval": 100000, "keep": null, "include_replay": false, "resume": null},
+    "output_dir": "${project_root}/outputs/pap_plus_walloss_dppo400k_h200_20261116/training",
+    "wandb": {"enabled": true, "name": "pap-plus-walloss-dppo400k-h200-20261116", "tags": ["pap-plus", "walloss", "dppo", "400k", "h200", "gpu-physx", "fresh-sft", "fixed-prefix"]}
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "name": "pap_plus_pi05_joint_residual",
+  "description": "Short joint SAC run with frozen PiPER PAP pi0.5 step 1019, per-step joint and gripper-width residuals, and one shared 32-D noise residual.",
+  "task": {
+    "plugin": "pap_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus.json",
+      "num_envs": 2,
+      "gpu_ids": [0],
+      "physics_backend": "gpu",
+      "horizon": 16,
+      "gamma": 0.995,
+      "max_episode_seconds": 20,
+      "render_resolution": [640, 480],
+      "renderer_profile": "rl_fast",
+      "observation_render_frames": 2,
+      "reset_render_frames": 2,
+      "smoothing": {"mode": "none"},
+      "randomization": {"position": "markers", "colors": ["red"]},
+      "log_dir": "${project_root}/outputs/pap_plus_pi05_joint_residual/simulation"
+    }
+  },
+  "model": {
+    "plugin": "pi05",
+    "config": {
+      "checkpoint": "/home/pengguanqi/Models/piper_pap_pi05_step1019_20261118",
+      "device": "cuda:1",
+      "vision_attention": "eager"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"port": 19952, "max_message_bytes": 67108864}, "service": {"batch_size": 2}},
+    "simulation": {"server": {"port": 19953}, "service": {"request_cache_size": 2}}
+  },
+  "run": {
+    "method": "joint_residual",
+    "mode": "train",
+    "device": "cpu",
+    "seed": 42,
+    "observation_state_encoding": "raw",
+    "endpoints": {"image_transport": "auto", "preprocess_images": false, "timeout": 300},
+    "rollout": {
+      "num_envs": 2, "max_transitions": 128, "eval_episodes": 2, "execution_horizon": 16,
+      "action_bounds": "clip", "terminal_observation_mode": "state_only_if_no_bootstrap", "fused_step_reset": true
+    },
+    "learner": {
+      "seed": 42,
+      "residual_mode": "all",
+      "residual_scale": [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.002],
+      "noise_steps": 1, "noise_dim": 32, "noise_scale": 1.5,
+      "batch_size": 8, "bootstrap_truncated": false
+    },
+    "update": {"replay_capacity": 256, "learning_starts": 8, "utd": 1},
+    "checkpoint": {"interval": 128, "keep": 1, "include_replay": true},
+    "output_dir": "${project_root}/outputs/pap_plus_pi05_joint_residual/train"
+  }
+}

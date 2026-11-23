@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "source": "LeRobot π0.5",
+  "repository": "https://github.com/huggingface/lerobot",
+  "commit": "d324ffe810d17264a0b1e628698aa1fa09aa639c",
+  "license": "Apache-2.0",
+  "archive_url": "https://codeload.github.com/huggingface/lerobot/tar.gz/d324ffe810d17264a0b1e628698aa1fa09aa639c",
+  "archive_sha256": "6e22ce65a5b4c65e03c491a7a86d0cf9d7fe14e08032e45b99063bdabb0179bd",
+  "source_roots": [
+    "lerobot/policies/pi05",
+    "lerobot/policies/pi_gemma.py"
+  ],
+  "files": {
+    "LICENSE": {
+      "upstream_path": "LICENSE",
+      "sha256": "0583375a0ec642ec79c447781f34322b0cfa66baff31258214d040f1f6d86d7c",
+      "source_sha256": "0583375a0ec642ec79c447781f34322b0cfa66baff31258214d040f1f6d86d7c",
+      "bytes": 27627
+    },
+    "lerobot/policies/pi05/README.md": {
+      "upstream_path": "src/lerobot/policies/pi05/README.md",
+      "sha256": "c3fecf4b33703379bb0af147622e93aa6323f16d79806d3828c7aaf72b7d5a1c",
+      "source_sha256": "c3fecf4b33703379bb0af147622e93aa6323f16d79806d3828c7aaf72b7d5a1c",
+      "bytes": 2739
+    },
+    "lerobot/policies/pi05/__init__.py": {
+      "upstream_path": "src/lerobot/policies/pi05/__init__.py",
+      "sha256": "e70e27782532c2f871bf3fd812e43f796c11eb8193ff481dbeb4b2ef4a31b197",
+      "source_sha256": "e70e27782532c2f871bf3fd812e43f796c11eb8193ff481dbeb4b2ef4a31b197",
+      "bytes": 873
+    },
+    "lerobot/policies/pi05/configuration_pi05.py": {
+      "upstream_path": "src/lerobot/policies/pi05/configuration_pi05.py",
+      "sha256": "fcbafbfd7d4b6aa8bf4049de553bf3180e3cf87b5330a2ed27d0bead7fc0d41b",
+      "source_sha256": "fcbafbfd7d4b6aa8bf4049de553bf3180e3cf87b5330a2ed27d0bead7fc0d41b",
+      "bytes": 6574
+    },
+    "lerobot/policies/pi05/modeling_pi05.py": {
+      "upstream_path": "src/lerobot/policies/pi05/modeling_pi05.py",
+      "sha256": "1924974cb0d7e781b98f7cc0b379bea8acb17afe0a7bd3f0c16f4a2db00826be",
+      "source_sha256": "1924974cb0d7e781b98f7cc0b379bea8acb17afe0a7bd3f0c16f4a2db00826be",
+      "bytes": 53041
+    },
+    "lerobot/policies/pi05/processor_pi05.py": {
+      "upstream_path": "src/lerobot/policies/pi05/processor_pi05.py",
+      "sha256": "0afe3c49ec4fedfd6a7bf355f5a466d6553bd5d3da32426c2cb5b470a2b1bba3",
+      "source_sha256": "0afe3c49ec4fedfd6a7bf355f5a466d6553bd5d3da32426c2cb5b470a2b1bba3",
+      "bytes": 6621
+    },
+    "lerobot/policies/pi_gemma.py": {
+      "upstream_path": "src/lerobot/policies/pi_gemma.py",
+      "sha256": "fe287aa89ad2c826093306a89b6752ec00d19eea52a5f2b4b4d463246e294722",
+      "source_sha256": "fe287aa89ad2c826093306a89b6752ec00d19eea52a5f2b4b4d463246e294722",
+      "bytes": 13445
+    }
+  }
+}

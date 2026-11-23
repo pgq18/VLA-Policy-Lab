@@ -1,0 +1,88 @@
+{
+  "extends": "pap_plus_walloss_dsrl.json",
+  "name": "pap_plus_walloss_dsrl_x60mm_100k",
+  "description": "Fresh DSRL100k on PAP+ with cumulative +X6cm box offset. Original Wall-OSS frozen; no residual warmup, no residual execution and no resumed RL state.",
+  "task": {
+    "config": {
+      "scene_overrides": {
+        "box": {
+          "center_xy": [
+            0.37555699432316486,
+            0.20464367372946982
+          ],
+          "size": [
+            0.10544668757677576,
+            0.08798959334382576,
+            0.06351111075864209
+          ],
+          "wall_thickness": 0.005,
+          "yaw_deg": -1.3917636491337193,
+          "geometry_status": "PAP Plus: 80% PAP outer X/Y size, original height and walls; box translated +0.06 m along robot-base X"
+        }
+      },
+      "physics_backend": "gpu",
+      "log_dir": "${project_root}/outputs/pap_plus_walloss_dsrl_x60mm_100k_20261115/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 19040
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 19041
+      }
+    }
+  },
+  "run": {
+    "device": "cuda:0",
+    "seed": 42,
+    "observation_state_encoding": "raw",
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19040",
+      "simulation": "http://127.0.0.1:19041"
+    },
+    "rollout": {
+      "max_transitions": 100000
+    },
+    "learner": {
+      "noise_dim": 20,
+      "target_entropy": 0.0
+    },
+    "update": {
+      "max_updates_per_wait": 32,
+      "progressive_exploration_steps": 0
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "frozen_dsrl": null,
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "output_dir": "${project_root}/outputs/pap_plus_walloss_dsrl_x60mm_100k_20261115/train",
+    "wandb": {
+      "enabled": true,
+      "project": "pressb-online-rl",
+      "name": "pap-plus-walloss-dsrl100k-x60mm-fresh-20261115",
+      "mode": "online",
+      "tags": [
+        "pap-plus",
+        "walloss",
+        "dsrl",
+        "100k",
+        "x60mm",
+        "fresh",
+        "no-residual-warmup",
+        "64env",
+        "gpu-physx",
+        "bf16"
+      ],
+      "log_interval_seconds": 10
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "extends": "pap_walloss_dsrl.json",
+  "name": "pap_plus_walloss_dsrl",
+  "description": "PAP+ uses a smaller physical box and no visible tabletop markers, while retaining PAP cameras, robot, footprint-aware sampling and the common parallel/RL runtime.",
+  "task": {
+    "plugin": "pap_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus.json",
+      "log_dir": "${project_root}/outputs/pap_plus_walloss_dsrl/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"port": 8210}},
+    "simulation": {"server": {"port": 8211}}
+  },
+  "run": {
+    "endpoints": {"inference": "ws://127.0.0.1:8210", "simulation": "http://127.0.0.1:8211"},
+    "output_dir": "${project_root}/outputs/pap_plus_walloss_dsrl/run"
+  }
+}

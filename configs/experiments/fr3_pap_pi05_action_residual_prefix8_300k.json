@@ -1,0 +1,27 @@
+{
+  "extends": "fr3_pap_pi05_dsrl_100k.json",
+  "name": "fr3_pap_pi05_action_residual_prefix8_300k",
+  "description": "Train joint and gripper corrections for the first eight commands decoded by pi0.5 using the frozen deterministic FR3 shared-noise policy.",
+  "nodes": {
+    "simulation": {"server": {"port": 19991}},
+    "inference": {"server": {"port": 19990}}
+  },
+  "task": {"config": {"log_dir": "${project_root}/outputs/fr3_pap_residual_prefix8_300k_autodl_20261118/simulation"}},
+  "run": {
+    "method": "action_residual",
+    "frozen_dsrl": {
+      "checkpoint": "${project_root}/outputs/fr3_pap_residual_prefix8_300k_autodl_20261118/frozen_dsrl_step100029.pt",
+      "checkpoint_sha256": "ec857103857aa0b4fcef31d40813facf6d00326b1251e0ae85491d023cd34be7",
+      "source_execution_horizon": 16,
+      "deterministic": true
+    },
+    "rollout": {"execution_horizon": 8, "max_transitions": 300000},
+    "learner": {
+      "action_horizon": 8, "residual_mode": "all",
+      "residual_scale": [0.02,0.02,0.02,0.02,0.02,0.02,0.02,0.025],
+      "target_entropy": null, "residual_q_bounds": null
+    },
+    "wandb": {"name": "fr3-pap-pi05-frozen-dsrl-prefix8-residual300k", "tags": ["fr3-pap","pi05","action-residual","300k","frozen-deterministic-dsrl","prefix8","wide","limit450","recent100","autodl"]},
+    "output_dir": "${project_root}/outputs/fr3_pap_residual_prefix8_300k_autodl_20261118/train"
+  }
+}

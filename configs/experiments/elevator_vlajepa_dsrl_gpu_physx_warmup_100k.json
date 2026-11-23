@@ -1,0 +1,19 @@
+{
+  "extends": "elevator_vlajepa_dsrl_residual_warmup_100k.json",
+  "name": "elevator_vlajepa_dsrl_gpu_physx_warmup_100k",
+  "description": "GPU PhysX ablation of the 20261113 CPU run: retain raw pose8 RL observation, random targets and shadow XYZ residual warmup; fresh 100k training.",
+  "task": {
+    "config": {
+      "output": "${project_root}/outputs/elevator_dsrl_gpu_physx_warmup_100k_20261113/simulation",
+      "physics_backend": "gpu",
+      "gpu_dynamics": true
+    }
+  },
+  "run": {
+    "output_dir": "${project_root}/outputs/elevator_dsrl_gpu_physx_warmup_100k_20261113/train",
+    "wandb": {
+      "name": "elevator-dsrl100k-gpu-physx-xyz-residual-warmup-20261113",
+      "tags": ["elevator", "dsrl", "100k", "residual-warmup", "xyz-only", "64env", "gpu-physx-ablation"]
+    }
+  }
+}

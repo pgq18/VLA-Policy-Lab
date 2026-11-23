@@ -1,0 +1,21 @@
+{
+  "extends": "pap_plus_plus_walloss_dsrl.json",
+  "name": "pap_plus_plus_walloss_dsrl_100k",
+  "description": "Fresh local PAP++ DSRL100k with the original frozen Wall-OSS, followed by a separately initialized joint residual stage. No old RL resume or residual warmup.",
+  "task": {"config": {"num_envs": 64, "physics_backend": "gpu", "log_dir": "${project_root}/outputs/pap_plus_plus_dsrl100k_jointresidual300k_scale003_20261117/simulation"}},
+  "nodes": {"inference": {"server": {"port": 19600}}, "simulation": {"server": {"port": 19601}}},
+  "run": {
+    "device": "cuda:0",
+    "observation_state_encoding": "raw",
+    "endpoints": {"inference": "ws://127.0.0.1:19600", "simulation": "http://127.0.0.1:19601"},
+    "rollout": {"max_transitions": 100000},
+    "learner": {"noise_dim": 20, "target_entropy": 0.0},
+    "update": {"max_updates_per_wait": 32, "progressive_exploration_steps": 0},
+    "checkpoint": {"interval": 100000, "keep": null, "include_replay": true, "resume": null},
+    "frozen_dsrl": null,
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "output_dir": "${project_root}/outputs/pap_plus_plus_dsrl100k_jointresidual300k_scale003_20261117/dsrl/train",
+    "wandb": {"enabled": true, "name": "pap-plus-plus-walloss-dsrl100k-local-20261117", "tags": ["pap-plus-plus", "walloss", "dsrl", "100k", "fresh", "64env", "gpu-physx", "local5090"]}
+  }
+}

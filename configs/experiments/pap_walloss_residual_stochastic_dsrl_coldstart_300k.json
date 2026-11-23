@@ -1,0 +1,26 @@
+{
+  "extends": "pap_walloss_residual_from_warmup_300k.json",
+  "name": "pap_walloss_residual_stochastic_dsrl_coldstart_300k",
+  "description": "Train PAP residual SAC for 300k fresh interactions using the completed 100k frozen stochastic DSRL, with random residual actor/critics and empty optimizers/replay instead of warmed initialization.",
+  "task": {"config": {"log_dir": "${project_root}/outputs/pap_residual_stochastic_dsrl_coldstart_300k_20261114/simulation"}},
+  "nodes": {
+    "inference": {"server": {"port": 19020}},
+    "simulation": {"server": {"port": 19021}}
+  },
+  "run": {
+    "endpoints": {"inference": "ws://127.0.0.1:19020", "simulation": "http://127.0.0.1:19021"},
+    "frozen_dsrl": {
+      "checkpoint": "${project_root}/outputs/pap_dsrl100k_residual300k_warmup_20261114/dsrl/train/checkpoints/step_000000100023.pt",
+      "checkpoint_sha256": "b2e02c7db6ff3f4fd135e15d3a4a4618b4bdef53dfb8f0afa95a4ae170c8648e",
+      "deterministic": false
+    },
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "checkpoint": {"resume": null},
+    "output_dir": "${project_root}/outputs/pap_residual_stochastic_dsrl_coldstart_300k_20261114/train",
+    "wandb": {
+      "name": "pap-walloss-residual300k-stochastic-dsrl-no-warmup-20261114",
+      "tags": ["pap", "walloss", "action-residual", "300k", "random-init", "no-residual-warmup", "joint7", "64env", "gpu-physx", "bf16", "frozen-stochastic-dsrl"]
+    }
+  }
+}

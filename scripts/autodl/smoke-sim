@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mode=stock
+if [[ ${1:-} == --recipe ]]; then mode=recipe; shift; fi
+if [[ ${1:-} == --help ]]; then
+    echo 'Usage: smoke-sim [--recipe] pap+|pap++|fr3_pap|elevator [GPU [new-report-directory]]'
+    echo 'Use --recipe for a full trained-policy action horizon with held joint/pose commands and saved camera frames.'
+    exit 0
+fi
+if [[ $# -lt 1 || $# -gt 3 ]]; then
+    echo 'Usage: smoke-sim [--recipe] pap_plus|pap_plus_plus|fr3_pap|elevator [GPU [new-report-directory]]' >&2
+    exit 2
+fi
+task=$1
+case "$task" in pap+) task=pap_plus ;; pap++) task=pap_plus_plus ;; pap_plus|pap_plus_plus|fr3_pap|elevator) ;; *) echo "Unknown task: $task" >&2; exit 2 ;; esac
+gpu=${2:-0}
+[[ $gpu =~ ^[0-3]$ ]] || { echo 'GPU must be 0..3' >&2; exit 2; }
+deploy_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+cd "$deploy_dir/../.."
+report=${3:-"$PWD/outputs/autodl_deployment/smoke/$(date +%Y%m%d-%H%M%S)-$$/$task"}
+mkdir -p "$(dirname "$report")"
+[[ ! -e "$report" ]] || { echo "Report already exists: $report" >&2; exit 2; }
+export OMNI_KIT_ACCEPT_EULA=YES PYTHONNOUSERSITE=1 OPENBLAS_NUM_THREADS=1 PYTHONUNBUFFERED=1
+export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/pressb-xdg-$UID}"
+install -dm700 "$XDG_RUNTIME_DIR"
+runtime=${PRESSB_SIM_ENV:-pressb-sim6}
+case "$runtime" in pressb|pressb-sim6) ;; *) echo "Unknown simulation environment: $runtime" >&2; exit 2 ;; esac
+if [[ $runtime == pressb-sim6 ]]; then
+    export EXP_PATH="$deploy_dir/isaac6-apps"
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libgcc_s.so.1:/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+fi
+py="$PWD/.conda/envs/$runtime/bin/python"
+export PATH="$PWD/.conda/envs/$runtime/bin:$PATH"
+export PYTHONPATH="$PWD/src"
+ulimit -c 0
+case "$task" in
+    pap_plus|pap_plus_plus)
+        cmd=(scripts/preview_pap_plus.py --task "$task" --config "configs/rl_nodes/${task}_simulation.json" --gpu-id "$gpu" --num-envs 2 --output-dir "$report") ;;
+    fr3_pap)
+        cmd=(scripts/smoke_fr3_pap.py --gpu "$gpu" --output "$report") ;;
+    elevator)
+        cmd=(scripts/smoke_elevator_task_backend.py --gpu-id "$gpu" --num-envs 2 --gpu-dynamics --max-seconds 0.25 --skip-replay --output-dir "$report") ;;
+esac
+if [[ $mode == recipe ]]; then
+    cmd=("$deploy_dir/verify-sim-observations.py" "$task" "$gpu" "$report")
+fi
+echo "PressB $task $mode, GPU $gpu, report $report"
+if ! "$py" "${cmd[@]}" > "$report.log" 2>&1; then
+    tail -35 "$report.log" >&2
+    exit 1
+fi
+"$py" - "$report/report.json" <<'PYTHON'
+import json
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+r = json.loads(path.read_text())
+passed = r.get("passed") is True or r.get("status") == "passed"
+fast_closed = r.get("status") == "closing" and r.get("operations_status") == "passed" and r.get("close_attempted")
+if not (passed or fast_closed):
+    raise SystemExit(f"Simulation smoke failed. Inspect {path} and {path.parent}.log")
+print(f"Verified {path}")
+PYTHON

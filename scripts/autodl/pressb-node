@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+deploy_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+project="$(cd -- "$deploy_dir/../.." && pwd -P)"
+usage() {
+  echo 'Usage: pressb-node {pap+|pap++|pap++-dsrl|pap++-arm6|fr3_pap|elevator} {inference|simulation|train|eval|validate} [PressB CLI options]'
+}
+if [[ ${1:-} == --help || ${1:-} == -h ]]; then usage; exit 0; fi
+if (( $# < 2 )); then usage >&2; exit 2; fi
+case "$1" in
+  pap+|pap_plus) task=pap_plus ;;
+  pap++|pap_plus_plus) task=pap_plus_plus ;;
+  pap++-dsrl) task=pap_plus_plus_dsrl ;;
+  pap++-arm6) task=pap_plus_plus_arm6 ;;
+  fr3_pap|elevator) task=$1 ;;
+  *) usage >&2; exit 2 ;;
+esac
+role=$2
+shift 2
+runtime=pressb
+case "$role" in
+  inference)
+    if [[ $task == elevator ]]; then runtime=vlajepa-inference; else runtime=pi05-inference; fi
+    export HF_HUB_OFFLINE=1
+    ;;
+  simulation)
+    runtime=pressb-sim6
+    export EXP_PATH="$deploy_dir/isaac6-apps"
+    export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgcc_s.so.1:/usr/lib/x86_64-linux-gnu/libstdc++.so.6${LD_PRELOAD:+:$LD_PRELOAD}"
+    export OMNI_KIT_ACCEPT_EULA=YES
+    export VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json
+    export XDG_RUNTIME_DIR="/tmp/pressb-runtime-$(id -u)"
+    install -d -m 700 "$XDG_RUNTIME_DIR"
+    ;;
+  train|eval|validate) ;;
+  *) usage >&2; exit 2 ;;
+esac
+case "$task:$role" in
+  pap_plus_plus_dsrl:inference|pap_plus_plus_arm6:inference) export CUDA_VISIBLE_DEVICES=1 ;;
+  pap_plus_plus_dsrl:*|pap_plus_plus_arm6:*) export CUDA_VISIBLE_DEVICES=0 ;;
+esac
+cd "$project"
+unset PYTHONPATH PYTHONHOME
+export PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1 OPENBLAS_NUM_THREADS=1
+export PATH="$project/.conda/envs/$runtime/bin:$PATH"
+python_bin="$project/.conda/envs/$runtime/bin/python"
+config="$deploy_dir/configs/$task.json"
+args=()
+if [[ $role != validate ]]; then
+  root="$project/outputs/autodl_runs/$task"
+  mkdir -p "$root"
+  invocation=$(mktemp -d "$root/$role-$(date +%Y%m%d-%H%M%S)-XXXXXX")
+  args+=(--resolved-dir "$invocation/resolved")
+  if [[ $role == simulation ]]; then
+    "$python_bin" - "$config" "$invocation" "$task" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+base, directory, task = sys.argv[1:]
+run = Path(directory)
+field = "output" if task == "elevator" else "log_dir"
+settings = {field: str(run / "simulator")}
+if task in ("pap_plus", "pap_plus_plus", "pap_plus_plus_dsrl", "pap_plus_plus_arm6"):
+    settings["python"] = sys.executable
+spec = {"extends": base, "task": {"config": settings}}
+(run / "experiment.json").write_text(json.dumps(spec, indent=2) + "\n")
+PY
+    config="$invocation/experiment.json"
+  fi
+  if [[ $role == train || $role == eval ]]; then args+=(--output "$invocation/run"); fi
+  echo "Run directory: $invocation" >&2
+fi
+exec "$python_bin" scripts/run_experiment.py "$role" --config "$config" "${args[@]}" "$@"

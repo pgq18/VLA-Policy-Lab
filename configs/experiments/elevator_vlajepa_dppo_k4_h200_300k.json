@@ -1,0 +1,73 @@
+{
+  "extends": "elevator_vlajepa_dppo.json",
+  "name": "elevator_vlajepa_dppo_k4_h200_300k",
+  "description": "Fresh SFT VLA-JEPA K4 DPPO on elevator. 256 local GPU PhysX environments; H200 GPU2 inference and learner via CUDA_VISIBLE_DEVICES=2. A rollout contains 24 chunks per environment (6144 transitions); two critic-only warmup rounds correspond to 12288 transitions. Use the experiment pipeline for matching 256-episode baseline/final evaluation and mirrored logging.",
+  "task": {
+    "config": {
+      "num_envs": 256,
+      "gpu": 0,
+      "physics_backend": "gpu",
+      "floor_sampling": "random",
+      "output": "${project_root}/outputs/elevator_vlajepa_dppo_k4_h200_300k/simulation"
+    }
+  },
+  "model": {
+    "plugin": "vlajepa",
+    "config": {
+      "checkpoint": "/home/pengguanqi/Data/PressB-elevator-dppo-k4-300k-20261116/inputs/piper_panel_stratified_press30hz_pose9_3epochs_20260929/checkpoints/step_010600",
+      "device": "cuda:0",
+      "image_preprocess_device": "cpu",
+      "base_vlm": "/home/pengguanqi/Models/Qwen3-VL-2B-Instruct",
+      "base_encoder": "/home/pengguanqi/Models/vjepa2-vitl-fpc64-256"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 19210,
+        "max_message_bytes": 536870912
+      },
+      "service": {
+        "batch_size": 64,
+        "cache_size": 512
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 19211
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    }
+  },
+  "run": {
+    "device": "cuda:0",
+    "seed": 42,
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19210",
+      "simulation": "http://127.0.0.1:19211",
+      "timeout": 600,
+      "max_message_bytes": 536870912
+    },
+    "rollout": {
+      "max_transitions": 300000,
+      "num_envs": 256,
+      "eval_episodes": 256
+    },
+    "dppo": {
+      "rollout_steps": 24
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": false,
+      "resume": null
+    },
+    "output_dir": "${project_root}/outputs/elevator_vlajepa_dppo_k4_h200_300k/run",
+    "wandb": {
+      "enabled": false,
+      "name": "elevator-vlajepa-dppo-k4-300k-h200-20261116"
+    }
+  }
+}

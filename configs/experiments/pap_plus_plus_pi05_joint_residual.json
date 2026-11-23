@@ -1,0 +1,17 @@
+{
+  "extends": "pap_plus_pi05_joint_residual.json",
+  "name": "pap_plus_plus_pi05_joint_residual",
+  "description": "PAP++ uses the same PiPER pi0.5 checkpoint and joint SAC settings as PAP+ with its own scene, endpoint pair and replay.",
+  "task": {
+    "plugin": "pap_plus_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus_plus.json",
+      "log_dir": "${project_root}/outputs/pap_plus_plus_pi05_joint_residual/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"port": 19954}},
+    "simulation": {"server": {"port": 19955}}
+  },
+  "run": {"output_dir": "${project_root}/outputs/pap_plus_plus_pi05_joint_residual/train"}
+}

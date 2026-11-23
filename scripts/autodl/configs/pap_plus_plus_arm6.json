@@ -1,0 +1,101 @@
+{
+  "extends": "pap_plus_plus_dsrl.json",
+  "name": "autodl_pap_plus_plus_arm6",
+  "description": "Apply six joint corrections to actions from the deterministic 30,016-transition PAP++ DSRL checkpoint. The gripper follows the base policy.",
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 19986
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 19987
+      }
+    }
+  },
+  "task": {
+    "config": {
+      "log_dir": "${project_root}/outputs/pap_plus_plus_pi05_arm6_autodl/simulation"
+    }
+  },
+  "run": {
+    "method": "action_residual",
+    "learner": {
+      "residual_mode": "all",
+      "residual_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "residual_scale": [
+        0.03,
+        0.03,
+        0.03,
+        0.03,
+        0.03,
+        0.03
+      ],
+      "residual_q_bounds": null,
+      "noise_steps": 1,
+      "noise_scale": 1.5,
+      "noise_dim": 32,
+      "hidden_dim": 256,
+      "batch_size": 256,
+      "policy_lr": 0.0001,
+      "q_lr": 0.0003,
+      "tau": 0.005,
+      "init_alpha": 0.01,
+      "auto_alpha": true,
+      "target_entropy": null,
+      "bootstrap_truncated": false,
+      "lambda_s": null,
+      "lambda_t": null,
+      "cartesian_residual": null,
+      "action_horizon": 16
+    },
+    "update": {
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32,
+      "progressive_exploration_steps": 13000
+    },
+    "checkpoint": {
+      "interval": 10000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "frozen_dsrl": {
+      "checkpoint": "${project_root}/outputs/pap_plus_plus_pi05_dsrl_100k_4denoise_ckpt10k_20261118/train/checkpoints/step_000000030016.pt",
+      "checkpoint_sha256": "eed4feedd20cae4d65427220c88b87ea4bbc09fdec15e8a7395f42a2db0afd96",
+      "deterministic": true
+    },
+    "wandb": {
+      "enabled": false,
+      "project": "pressb-online-rl",
+      "mode": "online",
+      "name": "pap-plus-plus-pi05-dsrl30016-arm6-residual003-100k-autodl",
+      "tags": [
+        "pap-plus-plus",
+        "pi05",
+        "frozen-dsrl30016",
+        "deterministic-dsrl",
+        "action-residual",
+        "arm6",
+        "scale003",
+        "4-denoising-steps",
+        "450-control-steps",
+        "100k",
+        "fresh",
+        "autodl"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/pap_plus_plus_pi05_arm6_autodl/train"
+  }
+}

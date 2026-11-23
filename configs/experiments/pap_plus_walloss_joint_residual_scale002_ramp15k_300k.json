@@ -1,0 +1,55 @@
+{
+  "extends": "pap_plus_walloss_joint_residual_scale002_300k.json",
+  "name": "pap_plus_walloss_joint_residual_scale002_ramp15k_300k",
+  "description": "Fresh300k joint residual run; retain2k zero-residual collection and ramp activation over13k so full activation starts at15k total transitions. All residual scales and frozen stochasticDSRL unchanged.",
+  "task": {
+    "config": {
+      "log_dir": "${project_root}/outputs/pap_plus_joint_residual_scale002_ramp15k_300k_20261115/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 19070
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 19071
+      }
+    }
+  },
+  "run": {
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19070",
+      "simulation": "http://127.0.0.1:19071"
+    },
+    "update": {
+      "learning_starts": 2000,
+      "progressive_exploration_steps": 13000
+    },
+    "checkpoint": {
+      "resume": null
+    },
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "output_dir": "${project_root}/outputs/pap_plus_joint_residual_scale002_ramp15k_300k_20261115/train",
+    "wandb": {
+      "name": "pap-plus-joint-residual300k-scale002-ramp15k-stochastic-dsrl-20261115",
+      "tags": [
+        "pap-plus",
+        "walloss",
+        "action-residual",
+        "joint7",
+        "scale002",
+        "ramp15k",
+        "300k",
+        "fresh-init",
+        "x60mm",
+        "64env",
+        "gpu-physx",
+        "frozen-stochastic-dsrl"
+      ]
+    }
+  }
+}

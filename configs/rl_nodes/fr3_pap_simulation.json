@@ -1,0 +1,59 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 18590,
+    "transport": "http"
+  },
+  "service": {
+    "request_cache_size": 2
+  },
+  "backend": {
+    "plugin": "fr3_pap",
+    "config": {
+      "scene_config": "configs/fr3_pap.json",
+      "num_envs": 4,
+      "horizon": 16,
+      "gpu": 1,
+      "headless": true,
+      "physics_backend": "gpu",
+      "physics_dt": 0.01,
+      "control_hz": 25.0,
+      "max_episode_seconds": 40.0,
+      "render_resolution": [
+        640,
+        480
+      ],
+      "cpu_threads": 4,
+      "png_workers": 4,
+      "smoothing": {
+        "mode": "none"
+      },
+      "randomization": {
+        "enabled": false,
+        "bowl_enabled": false,
+        "x_range_m": [
+          0.4,
+          0.7
+        ],
+        "y_range_m": [
+          -0.3,
+          0.3
+        ],
+        "bowl_x_range_m": [
+          0.4,
+          0.7
+        ],
+        "bowl_y_range_m": [
+          -0.3,
+          0.3
+        ],
+        "yaw_range_deg": [
+          -30.0,
+          30.0
+        ],
+        "range_reference": "center"
+      },
+      "log_dir": "outputs/fr3_pap/workers"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "extends": "fr3_pap_pi05_dsrl_100k.json",
+  "name": "fr3_pap_pi05_action_residual_full16_autodl_300k",
+  "description": "Fresh 300k full-horizon joint and gripper residual training on the corrected AutoDL Isaac 6 FR3 environment with a verified frozen DSRL actor.",
+  "task": {
+    "config": {
+      "log_dir": "${project_root}/outputs/fr3_pap_residual_full16_fixed_300k_autodl_20261118/simulation",
+      "gpu": 2
+    }
+  },
+  "run": {
+    "frozen_dsrl": {
+      "checkpoint": "${project_root}/outputs/fr3_autodl_render_sync_20261118/frozen_dsrl_step100029_isaac6_render_sync.pt",
+      "checkpoint_sha256": "3db770e3e650f0085fa89da1fb8ff67a9b64ee1522ce0aeaf4bd7775a90b8533",
+      "deterministic": true
+    },
+    "rollout": {
+      "execution_horizon": 16,
+      "max_transitions": 300000
+    },
+    "checkpoint": {
+      "interval": 20000,
+      "keep": null,
+      "include_replay": true
+    },
+    "learner": {
+      "action_horizon": 16,
+      "residual_mode": "all",
+      "residual_scale": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.025
+      ],
+      "target_entropy": null,
+      "residual_q_bounds": null
+    },
+    "wandb": {
+      "name": "fr3-pap-pi05-frozen-dsrl-full16-render-sync-residual300k",
+      "tags": [
+        "fr3-pap",
+        "pi05",
+        "action-residual",
+        "300k",
+        "frozen-deterministic-dsrl",
+        "full16",
+        "wide",
+        "limit450",
+        "recent100",
+        "autodl",
+        "isaac6-render-sync"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/fr3_pap_residual_full16_fixed_300k_autodl_20261118/train",
+    "method": "action_residual"
+  },
+  "nodes": {
+    "simulation": {
+      "server": {
+        "port": 19991
+      }
+    },
+    "inference": {
+      "server": {
+        "port": 19990
+      }
+    }
+  }
+}

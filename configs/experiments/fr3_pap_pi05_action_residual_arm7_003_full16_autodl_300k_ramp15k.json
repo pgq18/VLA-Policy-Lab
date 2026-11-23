@@ -1,0 +1,35 @@
+{
+  "extends": "fr3_pap_pi05_action_residual_arm7_003_full16_autodl_300k.json",
+  "name": "fr3_pap_pi05_action_residual_arm7_003_full16_autodl_300k_ramp15k",
+  "description": "Gradually activate the 16-step seven-joint residual over 13k transitions after the initial 2k frozen-DSRL collection.",
+  "task": {
+    "config": {
+      "log_dir": "${project_root}/outputs/fr3_pap_residual_arm7_003_full16_ramp15k_300k_autodl_20261118/simulation"
+    }
+  },
+  "run": {
+    "update": {
+      "progressive_exploration_steps": 13000
+    },
+    "wandb": {
+      "name": "fr3-pap-frozen-dsrl-full16-arm7-scale003-300k-ramp15k",
+      "tags": [
+        "fr3-pap",
+        "pi05",
+        "action-residual",
+        "300k",
+        "frozen-deterministic-dsrl",
+        "full16",
+        "wide",
+        "limit450",
+        "recent100",
+        "autodl",
+        "isaac6-render-sync",
+        "arm-only",
+        "scale003",
+        "ramp15k"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/fr3_pap_residual_arm7_003_full16_ramp15k_300k_autodl_20261118/train"
+  }
+}

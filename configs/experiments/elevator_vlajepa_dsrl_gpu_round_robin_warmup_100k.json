@@ -1,0 +1,26 @@
+{
+  "extends": "elevator_vlajepa_dsrl_gpu_physx_warmup_100k.json",
+  "name": "elevator_vlajepa_dsrl_gpu_round_robin_warmup_100k",
+  "description": "Fresh GPU PhysX 100k DSRL: global episode floor round-robin, with all other learning/observation/physics settings retained from the random-floor comparison.",
+  "task": {
+    "config": {
+      "floor_sampling": "round_robin",
+      "output": "${project_root}/outputs/elevator_dsrl_gpu_round_robin_warmup_100k_20261113/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"port": 18950}},
+    "simulation": {"server": {"port": 18951}}
+  },
+  "run": {
+    "endpoints": {
+      "inference": "ws://127.0.0.1:18950",
+      "simulation": "http://127.0.0.1:18951"
+    },
+    "output_dir": "${project_root}/outputs/elevator_dsrl_gpu_round_robin_warmup_100k_20261113/train",
+    "wandb": {
+      "name": "elevator-dsrl100k-gpu-physx-floor-round-robin-20261113",
+      "tags": ["elevator", "dsrl", "100k", "residual-warmup", "xyz-only", "64env", "gpu-physx", "floor-round-robin"]
+    }
+  }
+}

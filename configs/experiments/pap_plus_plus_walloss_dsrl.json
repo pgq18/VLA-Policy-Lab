@@ -1,0 +1,32 @@
+{
+  "extends": "pap_walloss_dsrl.json",
+  "name": "pap_plus_plus_walloss_dsrl",
+  "description": "PAP++ uses 64.8% of PAP+ box X/Y size and a +3 cm offset from PAP. Cameras, robot, unmarked sampling region and physical outcomes use the shared PAP implementation.",
+  "task": {
+    "plugin": "pap_plus_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus_plus.json",
+      "log_dir": "${project_root}/outputs/pap_plus_plus_walloss_dsrl/simulation",
+      "physics_backend": "gpu"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 8220
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 8221
+      }
+    }
+  },
+  "run": {
+    "endpoints": {
+      "inference": "ws://127.0.0.1:8220",
+      "simulation": "http://127.0.0.1:8221"
+    },
+    "output_dir": "${project_root}/outputs/pap_plus_plus_walloss_dsrl/run"
+  }
+}

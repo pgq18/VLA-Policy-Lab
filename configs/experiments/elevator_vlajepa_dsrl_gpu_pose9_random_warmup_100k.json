@@ -1,0 +1,27 @@
+{
+  "extends": "elevator_vlajepa_dsrl_gpu_physx_warmup_100k.json",
+  "name": "elevator_vlajepa_dsrl_gpu_pose9_random_warmup_100k",
+  "description": "Fresh GPU PhysX 100k DSRL with random target floors and XYZ plus rotation6D RL state; retain nonexecuted XYZ residual warmup and all other learning settings.",
+  "task": {
+    "config": {
+      "floor_sampling": "random",
+      "output": "${project_root}/outputs/elevator_dsrl_gpu_pose9_random_warmup_100k_20261113/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {"server": {"port": 18960}},
+    "simulation": {"server": {"port": 18961}}
+  },
+  "run": {
+    "observation_state_encoding": "pose9",
+    "endpoints": {
+      "inference": "ws://127.0.0.1:18960",
+      "simulation": "http://127.0.0.1:18961"
+    },
+    "output_dir": "${project_root}/outputs/elevator_dsrl_gpu_pose9_random_warmup_100k_20261113/train",
+    "wandb": {
+      "name": "elevator-dsrl100k-gpu-physx-pose9-random-20261113",
+      "tags": ["elevator", "dsrl", "100k", "residual-warmup", "xyz-only", "64env", "gpu-physx", "pose9-rl-state", "random-floors"]
+    }
+  }
+}

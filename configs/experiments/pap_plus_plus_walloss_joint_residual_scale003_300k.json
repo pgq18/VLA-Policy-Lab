@@ -1,0 +1,18 @@
+{
+  "extends": "pap_walloss_residual_stochastic_dsrl_coldstart_300k.json",
+  "name": "pap_plus_plus_walloss_joint_residual_scale003_300k",
+  "description": "Fresh PAP++ joint7 residual300k using this queue's completed100k frozen stochastic DSRL. Fixed scales .03rad x6/.003m; zero residual for2k then activation probability rises to1 at15k. The queue resolves the actual new DSRL checkpoint before launch.",
+  "task": {"plugin": "pap_plus_plus", "config": {"scene_config": "${project_root}/configs/piper_pick_place_plus_plus.json", "num_envs": 64, "physics_backend": "gpu", "log_dir": "${project_root}/outputs/pap_plus_plus_dsrl100k_jointresidual300k_scale003_20261117/simulation"}},
+  "nodes": {"inference": {"server": {"port": 19600}}, "simulation": {"server": {"port": 19601}}},
+  "run": {
+    "endpoints": {"inference": "ws://127.0.0.1:19600", "simulation": "http://127.0.0.1:19601"},
+    "learner": {"residual_mode": "all", "residual_indices": [0,1,2,3,4,5,6], "residual_scale": [0.03,0.03,0.03,0.03,0.03,0.03,0.003], "cartesian_residual": null},
+    "update": {"learning_starts": 2000, "progressive_exploration_steps": 13000},
+    "frozen_dsrl": {"checkpoint": "${project_root}/outputs/pap_plus_plus_dsrl100k_jointresidual300k_scale003_20261117/dsrl/train/checkpoints/PENDING_STAGE1_FINAL.pt", "checkpoint_sha256": null, "deterministic": false},
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "checkpoint": {"interval": 100000, "keep": null, "include_replay": true, "resume": null},
+    "output_dir": "${project_root}/outputs/pap_plus_plus_dsrl100k_jointresidual300k_scale003_20261117/residual/train",
+    "wandb": {"enabled": true, "name": "pap-plus-plus-joint-residual300k-scale003-local-20261117", "tags": ["pap-plus-plus", "walloss", "action-residual", "joint7", "scale003", "activation15k", "300k", "fresh", "64env", "gpu-physx", "frozen-stochastic-dsrl", "local5090"]}
+  }
+}

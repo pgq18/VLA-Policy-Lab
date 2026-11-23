@@ -1,0 +1,127 @@
+{
+  "extends": "elevator_vlajepa_dsrl.json",
+  "name": "elevator_vlajepa_dsrl_residual_warmup_100k",
+  "description": "Fresh 100k DSRL with concurrent XYZ residual actor/critic learning; only DSRL commands reach simulation.",
+  "task": {
+    "config": {
+      "output": "${project_root}/outputs/elevator_dsrl_residual_warmup_100k_20261113/simulation",
+      "gpu": 0,
+      "num_envs": 64,
+      "gpu_dynamics": false,
+      "cpu_threads": 8,
+      "png_workers": 8,
+      "log_actions": false,
+      "physics_backend": "cpu"
+    }
+  },
+  "model": {
+    "config": {
+      "device": "cuda:0",
+      "image_preprocess_device": "cuda"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 18940,
+        "max_message_bytes": 201326592
+      },
+      "service": {
+        "batch_size": 64,
+        "cache_size": 512,
+        "cache_ttl": 3600,
+        "collect_timing": true
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 18941
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    }
+  },
+  "run": {
+    "device": "cuda:0",
+    "endpoints": {
+      "inference": "ws://127.0.0.1:18940",
+      "simulation": "http://127.0.0.1:18941",
+      "timeout": 300,
+      "max_message_bytes": 201326592,
+      "image_transport": "auto",
+      "preprocess_images": false,
+      "image_workers": 8
+    },
+    "rollout": {
+      "max_transitions": 100000,
+      "num_envs": 64,
+      "execution_horizon": 7,
+      "terminal_observation_mode": "state_only_if_no_bootstrap",
+      "fused_step_reset": true
+    },
+    "learner": {
+      "bootstrap_truncated": false,
+      "target_entropy": 0.0
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "residual_warmup": {
+      "learner": {
+        "residual_mode": "xyz",
+        "residual_indices": [
+          0,
+          1,
+          2
+        ],
+        "residual_scale": [
+          0.02,
+          0.02,
+          0.02
+        ],
+        "residual_q_bounds": [
+          0.0,
+          1.0
+        ],
+        "hidden_dim": 256,
+        "batch_size": 256,
+        "bootstrap_truncated": false
+      },
+      "learning_starts": 2000,
+      "replay_capacity": 100000,
+      "utd": 1.0,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32,
+      "loss": {
+        "target_mode": "behavior",
+        "actor_q_weight": 1.0,
+        "actor_l2_weight": 1.0,
+        "entropy_weight": 0.0
+      }
+    },
+    "wandb": {
+      "enabled": true,
+      "project": "pressb-online-rl",
+      "name": "elevator-dsrl100k-xyz-residual-warmup-20261113",
+      "mode": "online",
+      "tags": [
+        "elevator",
+        "dsrl",
+        "100k",
+        "residual-warmup",
+        "xyz-only",
+        "64env"
+      ],
+      "log_interval_seconds": 10
+    },
+    "output_dir": "${project_root}/outputs/elevator_dsrl_residual_warmup_100k_20261113/train",
+    "update": {
+      "max_updates_per_wait": 32
+    },
+    "observation_state_encoding": "raw"
+  }
+}

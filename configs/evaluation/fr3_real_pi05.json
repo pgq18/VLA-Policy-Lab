@@ -1,0 +1,28 @@
+{
+  "method": "base",
+  "mode": "eval",
+  "device": "cpu",
+  "seed": 42,
+  "endpoints": {
+    "inference": "ws://127.0.0.1:18751",
+    "simulation": "http://127.0.0.1:18741",
+    "timeout": 360,
+    "image_transport": "auto"
+  },
+  "rollout": {
+    "num_envs": 1,
+    "eval_episodes": 20,
+    "execution_horizon": 16,
+    "action_bounds": "clip",
+    "terminal_observation_mode": "full",
+    "fused_step_reset": false
+  },
+  "human_feedback": {"mode": "environment"},
+  "operator_console": {
+    "ssh_host": "franka",
+    "command": ["/home/pnp/Workspace/lerobot/franka_pressb_operator.sh"],
+    "timeout_s": 5,
+    "poll_interval_s": 0.5
+  },
+  "output_dir": "outputs/fr3_real_pi05_eval"
+}

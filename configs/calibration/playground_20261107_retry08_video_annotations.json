@@ -1,0 +1,973 @@
+{
+  "schema_version": 1,
+  "coordinate_system": "Native 640x480 camera view, u right/v down, zero-based; real composite header of 32px removed; no resizing",
+  "corner_order": "Existing scene local top corners [(-0.5,-0.5),(-0.5,+0.5),(+0.5,+0.5),(+0.5,-0.5)] * side, followed by scene yaw. This is physical corner order, not identical image-cyclic start across views.",
+  "annotation_method": "Manual source-image readings. Current geometric projection used only to establish cyclic physical corner identity, not to select pixel positions.",
+  "limitations": [
+    "Pixel observations are not a measured physical depth or contact force.",
+    "Finger extrema constrain projected mesh support, not a named mesh vertex; link identity must be assigned by fit geometry.",
+    "Repeated global cube corners are stationary-scene checks, not independent camera poses.",
+    "Wrist green cube corners after contact are deliberately excluded from static-scene fitting.",
+    "Finger pad geometry and encoder zero remain uncalibrated."
+  ],
+  "observations": [
+    {
+      "name": "pregrasp_10s",
+      "camera": "global",
+      "frame_index": 322,
+      "split": "train",
+      "cube_corners": {
+        "GreenCube": [
+          [
+            359.5,
+            175.5
+          ],
+          [
+            383.5,
+            165.5
+          ],
+          [
+            398,
+            186
+          ],
+          [
+            372,
+            196.5
+          ]
+        ],
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [],
+      "q_rad_m": [
+        0.02123950079923421,
+        0.6799479301885181,
+        -0.5624323514551727,
+        -0.06997024971245268,
+        0.739932336382996,
+        0.03685686660965845,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_10s",
+      "camera": "wrist",
+      "frame_index": 322,
+      "split": "train",
+      "cube_corners": {
+        "GreenCube": [
+          [
+            254,
+            317
+          ],
+          [
+            205,
+            338
+          ],
+          [
+            185,
+            290
+          ],
+          [
+            234,
+            272
+          ]
+        ],
+        "BlueCube": [
+          [
+            64,
+            322
+          ],
+          [
+            8,
+            317
+          ],
+          [
+            20,
+            269
+          ],
+          [
+            77,
+            272
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            358,
+            339,
+            410,
+            388
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 351
+        }
+      ],
+      "q_rad_m": [
+        0.02129301687433082,
+        0.68020906621683,
+        -0.5626462650750201,
+        -0.06997024971245268,
+        0.7402106818160505,
+        0.036896260387160124,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_20s",
+      "camera": "global",
+      "frame_index": 422,
+      "split": "holdout",
+      "cube_corners": {
+        "GreenCube": [
+          [
+            359.5,
+            175.5
+          ],
+          [
+            383.5,
+            165.5
+          ],
+          [
+            398,
+            186
+          ],
+          [
+            372,
+            196.5
+          ]
+        ],
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            276,
+            40
+          ],
+          "roi_xyxy": [
+            265,
+            5,
+            284,
+            48
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            349,
+            37
+          ],
+          "roi_xyxy": [
+            340,
+            5,
+            360,
+            44
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.11157889907999749,
+        1.0986665256851074,
+        -0.7826667803688023,
+        -0.04344124508213886,
+        0.8059057821083817,
+        -0.05400048705670456,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_20s",
+      "camera": "wrist",
+      "frame_index": 422,
+      "split": "holdout",
+      "cube_corners": {
+        "GreenCube": [
+          [
+            317,
+            282
+          ],
+          [
+            255,
+            300
+          ],
+          [
+            238,
+            237
+          ],
+          [
+            297,
+            219
+          ]
+        ],
+        "BlueCube": [
+          [
+            95,
+            249
+          ],
+          [
+            28,
+            235
+          ],
+          [
+            46,
+            173
+          ],
+          [
+            111,
+            189
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            358,
+            339,
+            410,
+            388
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 351
+        }
+      ],
+      "q_rad_m": [
+        0.11157889907999749,
+        1.098754714107438,
+        -0.7826941491895257,
+        -0.04344124508213886,
+        0.8059057821083817,
+        -0.05400048705670456,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_28s",
+      "camera": "global",
+      "frame_index": 501,
+      "split": "train",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            317,
+            122
+          ],
+          "roi_xyxy": [
+            291,
+            79,
+            330,
+            133
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            383,
+            111
+          ],
+          "roi_xyxy": [
+            369,
+            74,
+            400,
+            121
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.1830152253641254,
+        1.4602415807741138,
+        -0.9577669296490915,
+        -0.02103121748653167,
+        0.8567297699264566,
+        -0.12786282100110458,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_28s",
+      "camera": "wrist",
+      "frame_index": 501,
+      "split": "train",
+      "cube_corners": {
+        "GreenCube": [
+          [
+            403,
+            313
+          ],
+          [
+            321,
+            327
+          ],
+          [
+            308,
+            241
+          ],
+          [
+            391,
+            230
+          ]
+        ],
+        "BlueCube": [
+          [
+            125,
+            238
+          ],
+          [
+            43,
+            207
+          ],
+          [
+            72,
+            126
+          ],
+          [
+            156,
+            157
+          ]
+        ]
+      },
+      "finger_silhouettes": [],
+      "q_rad_m": [
+        0.1830152253641254,
+        1.460308132102895,
+        -0.9578627952536451,
+        -0.02103121748653167,
+        0.8567297699264566,
+        -0.12786282100110458,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_34s",
+      "camera": "global",
+      "frame_index": 561,
+      "split": "train",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            348,
+            181
+          ],
+          "roi_xyxy": [
+            329,
+            146,
+            361,
+            189
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            408,
+            163
+          ],
+          "roi_xyxy": [
+            394,
+            136,
+            423,
+            172
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.23757421778146814,
+        1.721457265084314,
+        -1.0894345190948604,
+        0.0,
+        0.8957029721234899,
+        -0.1817067788291696,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_34s",
+      "camera": "wrist",
+      "frame_index": 561,
+      "split": "train",
+      "cube_corners": {},
+      "finger_silhouettes": [],
+      "q_rad_m": [
+        0.23757421778146814,
+        1.72150094214227,
+        -1.0894345190948604,
+        0.0,
+        0.8957029721234899,
+        -0.18178119159457626,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_36s",
+      "camera": "global",
+      "frame_index": 581,
+      "split": "holdout",
+      "cube_corners": {
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            355,
+            193
+          ],
+          "roi_xyxy": [
+            335,
+            155,
+            372,
+            202
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            413,
+            173
+          ],
+          "roi_xyxy": [
+            398,
+            148,
+            429,
+            182
+          ],
+          "uncertainty_px": 2.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.786763368436675,
+        -1.121932549766995,
+        0.0,
+        0.9061574943429359,
+        -0.1960004749989632,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "pregrasp_36s",
+      "camera": "wrist",
+      "frame_index": 581,
+      "split": "holdout",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            358,
+            339,
+            410,
+            388
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 351
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.786763368436675,
+        -1.121932549766995,
+        0.0,
+        0.9061574943429359,
+        -0.1960004749989632,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "grasp_open",
+      "camera": "global",
+      "frame_index": 639,
+      "split": "holdout",
+      "cube_corners": {
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            361,
+            218
+          ],
+          "roi_xyxy": [
+            344,
+            194,
+            377,
+            226
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            405,
+            202
+          ],
+          "roi_xyxy": [
+            395,
+            188,
+            420,
+            210
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.8635229489393856,
+        -1.0504438636053073,
+        0.0,
+        0.7566002307395419,
+        -0.1969604060875601,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "grasp_open",
+      "camera": "wrist",
+      "frame_index": 639,
+      "split": "holdout",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            358,
+            339,
+            410,
+            388
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 351
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.8635229489393856,
+        -1.0504438636053073,
+        0.0,
+        0.7566002307395419,
+        -0.1969604060875601,
+        0.0594
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "close",
+      "camera": "global",
+      "frame_index": 686,
+      "split": "holdout",
+      "cube_corners": {
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            367,
+            216
+          ],
+          "roi_xyxy": [
+            355,
+            191,
+            382,
+            224
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            400,
+            202
+          ],
+          "roi_xyxy": [
+            388,
+            188,
+            413,
+            211
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.8635229489393856,
+        -1.0504438636053073,
+        0.0,
+        0.7566002307395419,
+        -0.1969604060875601,
+        0.0356
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "close",
+      "camera": "wrist",
+      "frame_index": 686,
+      "split": "holdout",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            426,
+            341,
+            478,
+            390
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 353
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.8635229489393856,
+        -1.0504438636053073,
+        0.0,
+        0.7566002307395419,
+        -0.1969604060875601,
+        0.0356
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "lift_hold",
+      "camera": "global",
+      "frame_index": 749,
+      "split": "holdout",
+      "cube_corners": {
+        "BlueCube": [
+          [
+            455,
+            172
+          ],
+          [
+            484,
+            172
+          ],
+          [
+            486,
+            193
+          ],
+          [
+            454,
+            193
+          ]
+        ]
+      },
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link7",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            368,
+            182
+          ],
+          "roi_xyxy": [
+            351,
+            153,
+            382,
+            190
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        },
+        {
+          "image_side": "right",
+          "link": "link8",
+          "feature": "distal finger visible silhouette maximum v",
+          "extremum": "max",
+          "uv": [
+            403,
+            170
+          ],
+          "roi_xyxy": [
+            389,
+            148,
+            416,
+            177
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "v extremum and u of projected hull tip band (softweight0.75px), approximate silhouette correspondence, sigma3px",
+          "occlusion": "No cube overlap at pregrasp; contact-stage nearby object may obscure the inner edge.",
+          "axis": "v",
+          "sigma_px": 3.0
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.7716837236994438,
+        -1.1439411516346434,
+        0.0,
+        0.9431933810702556,
+        -0.1969604060875601,
+        0.0356
+      ],
+      "cube_sigma_px": 2.0
+    },
+    {
+      "name": "lift_hold",
+      "camera": "wrist",
+      "frame_index": 749,
+      "split": "holdout",
+      "cube_corners": {},
+      "finger_silhouettes": [
+        {
+          "image_side": "left",
+          "link": "link8",
+          "feature": "distal finger visible silhouette minimum v",
+          "extremum": "min",
+          "roi_xyxy": [
+            426,
+            340,
+            478,
+            389
+          ],
+          "uncertainty_px": 3.0,
+          "fit_constraint": "Use v as support value; u identifies the visible finger. Camera-housing geometry is excluded.",
+          "axis": "v",
+          "sigma_px": 3.0,
+          "value_px": 352
+        }
+      ],
+      "q_rad_m": [
+        0.25071654704898544,
+        1.7716837236994438,
+        -1.1439411516346434,
+        0.0,
+        0.9431933810702556,
+        -0.1969604060875601,
+        0.0356
+      ],
+      "cube_sigma_px": 2.0
+    }
+  ]
+}

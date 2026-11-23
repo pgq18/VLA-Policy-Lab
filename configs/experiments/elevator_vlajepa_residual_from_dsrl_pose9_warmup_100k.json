@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "name": "elevator_vlajepa_residual_from_dsrl_pose9_warmup_100k",
+  "description": "Train 100k new online XYZ residual transitions from the actor/critics warmed during pose9/random/GPU DSRL; freeze that source DSRL actor. Fresh replay/rollout counters, retained warmed network/optimizer state.",
+  "task": {
+    "plugin": "elevator",
+    "config": {
+      "output": "${project_root}/outputs/elevator_residual_from_dsrl_pose9_warmup_100k_20261114/simulation",
+      "gpu": 0,
+      "num_envs": 64,
+      "max_seconds": 15,
+      "smoothing_window": 3,
+      "single_gamma": 0.99,
+      "camera_resolution": 224,
+      "floors": [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "panel_randomization": true,
+      "gpu_dynamics": true,
+      "cpu_threads": 8,
+      "png_workers": 8,
+      "log_actions": false,
+      "physics_backend": "gpu",
+      "floor_sampling": "random"
+    }
+  },
+  "model": {
+    "plugin": "vlajepa",
+    "config": {
+      "checkpoint": "${project_root}/.cache/vlajepa/piper_panel_stratified_press30hz_pose9_3epochs_20260929/checkpoints/step_010600",
+      "device": "cuda:0",
+      "image_preprocess_device": "cuda",
+      "base_vlm": "${project_root}/.cache/vlajepa/Qwen3-VL-2B-Instruct",
+      "base_encoder": "${project_root}/.cache/vlajepa/vjepa2-vitl-fpc64-256"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 18970,
+        "transport": "ws",
+        "max_message_bytes": 201326592
+      },
+      "service": {
+        "cache_size": 512,
+        "cache_ttl": 3600,
+        "batch_size": 64,
+        "collect_timing": true
+      }
+    },
+    "simulation": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 18971,
+        "transport": "http"
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    }
+  },
+  "run": {
+    "method": "action_residual",
+    "mode": "train",
+    "device": "cuda:0",
+    "seed": 42,
+    "observation_state_encoding": "pose9",
+    "endpoints": {
+      "inference": "ws://127.0.0.1:18970",
+      "simulation": "http://127.0.0.1:18971",
+      "timeout": 300,
+      "max_message_bytes": 201326592,
+      "image_transport": "auto",
+      "preprocess_images": false,
+      "image_workers": 8
+    },
+    "rollout": {
+      "max_transitions": 100000,
+      "execution_horizon": 7,
+      "num_envs": 64,
+      "terminal_observation_mode": "state_only_if_no_bootstrap",
+      "fused_step_reset": true
+    },
+    "learner": {
+      "residual_mode": "xyz",
+      "residual_indices": [
+        0,
+        1,
+        2
+      ],
+      "residual_scale": [
+        0.02,
+        0.02,
+        0.02
+      ],
+      "residual_q_bounds": [
+        0.0,
+        1.0
+      ],
+      "hidden_dim": 256,
+      "batch_size": 256,
+      "policy_lr": 0.0001,
+      "q_lr": 0.0003,
+      "tau": 0.005,
+      "init_alpha": 0.01,
+      "auto_alpha": true,
+      "target_entropy": null,
+      "bootstrap_truncated": false,
+      "lambda_s": null,
+      "lambda_t": null
+    },
+    "update": {
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_updates_per_wait": 32,
+      "progressive_exploration_steps": 50000
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "residual_warmup": null,
+    "frozen_dsrl": {
+      "checkpoint": "${project_root}/outputs/elevator_dsrl_gpu_pose9_random_warmup_100k_20261113/train/checkpoints/step_000000100028.pt",
+      "deterministic": true,
+      "checkpoint_sha256": "0defecd3a8157ce08a555ff3c460a0a7b3fdb5f731e30d6b7c4f9c08a5b30681"
+    },
+    "residual_initialize_from": "${project_root}/outputs/elevator_dsrl_gpu_pose9_random_warmup_100k_20261113/train/checkpoints/step_000000100028.pt",
+    "wandb": {
+      "enabled": true,
+      "project": "pressb-online-rl",
+      "name": "elevator-residual100k-from-dsrl-pose9-warmup-20261114",
+      "mode": "online",
+      "tags": [
+        "elevator",
+        "action-residual",
+        "100k",
+        "initialized-from-warmup",
+        "xyz-only",
+        "64env",
+        "gpu-physx",
+        "pose9-rl-state",
+        "random-floors",
+        "frozen-dsrl"
+      ],
+      "log_interval_seconds": 10
+    },
+    "output_dir": "${project_root}/outputs/elevator_residual_from_dsrl_pose9_warmup_100k_20261114/train"
+  }
+}

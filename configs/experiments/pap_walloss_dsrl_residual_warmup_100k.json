@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "name": "pap_walloss_dsrl_residual_warmup_100k",
+  "task": {
+    "plugin": "pap",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place.json",
+      "trajectory": "${project_root}/outputs/piper_pap_reconstruction_20261022/dataset_audit/episode_000000.npz",
+      "python": "${project_root}/.conda/envs/pressb/bin/python",
+      "num_envs": 64,
+      "gpu_ids": [
+        0
+      ],
+      "horizon": 32,
+      "render_resolution": [
+        640,
+        480
+      ],
+      "render_subframes": 1,
+      "reset_render_frames": 2,
+      "spacing_m": 6,
+      "cpu_threads": 8,
+      "png_workers": 8,
+      "gamma": 0.995,
+      "max_episode_seconds": 20,
+      "smoothing": {
+        "mode": "none",
+        "alpha": 0.8
+      },
+      "randomization": {
+        "position": "markers",
+        "colors": [
+          "red"
+        ]
+      },
+      "reward": {
+        "success": 1.0,
+        "failure": 0.0
+      },
+      "outcome": {
+        "stable_seconds": 0.5,
+        "lift_height": 0.04
+      },
+      "terminate_on_drop": true,
+      "drop_below_table_m": 0.05,
+      "startup_timeout": 300,
+      "command_timeout": 300,
+      "renderer_profile": "rl_fast",
+      "observation_render_frames": 2,
+      "image_preprocessing": {
+        "version": 1,
+        "kind": "walloss_pil_longest_edge",
+        "longest_edge": 256,
+        "mode": "RGB",
+        "resample": "bicubic",
+        "rounding": "truncate"
+      },
+      "physics_backend": "gpu",
+      "log_dir": "${project_root}/outputs/pap_dsrl100k_residual300k_warmup_20261114/simulation"
+    }
+  },
+  "model": {
+    "plugin": "walloss",
+    "config": {
+      "model_path": "/home/pengguanqi/Models/piper_pap_20260606",
+      "train_config": "${project_root}/configs/model_metadata/walloss_pap_20260606.yaml",
+      "norm_stats": "/home/pengguanqi/Models/piper_pap_20260606/norm_stats.json",
+      "device": "cuda:0",
+      "dtype": "bfloat16",
+      "horizon": 32,
+      "control_hz": 30,
+      "num_inference_timesteps": 10,
+      "input_image_resolution": 256,
+      "camera_mapping": {
+        "up": "face_view",
+        "wrist": "left_wrist_view"
+      },
+      "flow_prefix_cache": true,
+      "flow_prefix_cache_mode": "full_attention"
+    }
+  },
+  "nodes": {
+    "simulation": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19001,
+        "transport": "http"
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    },
+    "inference": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19000,
+        "transport": "ws",
+        "max_message_bytes": 201326592
+      },
+      "service": {
+        "cache_size": 256,
+        "cache_ttl": 600,
+        "batch_size": 64,
+        "collect_timing": true
+      }
+    }
+  },
+  "run": {
+    "method": "dsrl",
+    "mode": "train",
+    "device": "cuda:0",
+    "seed": 42,
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19000",
+      "simulation": "http://127.0.0.1:19001",
+      "timeout": 300,
+      "max_message_bytes": 201326592,
+      "image_transport": "auto",
+      "preprocess_images": true,
+      "image_workers": 8
+    },
+    "rollout": {
+      "max_transitions": 100000,
+      "execution_horizon": 32,
+      "recent_window": 100,
+      "action_bounds": "clip",
+      "num_envs": 64,
+      "terminal_observation_mode": "state_only_if_no_bootstrap",
+      "fused_step_reset": true
+    },
+    "learner": {
+      "noise_steps": 32,
+      "noise_scale": 1.5,
+      "batch_size": 256,
+      "hidden_dim": 256,
+      "bootstrap_truncated": false,
+      "noise_dim": 20,
+      "target_entropy": 0.0
+    },
+    "update": {
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32,
+      "progressive_exploration_steps": 0
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "output_dir": "${project_root}/outputs/pap_dsrl100k_residual300k_warmup_20261114/dsrl/train",
+    "wandb": {
+      "enabled": true,
+      "project": "pressb-online-rl",
+      "name": "pap-walloss-dsrl100k-residual-warmup-20261114",
+      "mode": "online",
+      "tags": [
+        "pap",
+        "walloss",
+        "dsrl",
+        "100k",
+        "residual-warmup",
+        "joint7",
+        "64env",
+        "gpu-physx",
+        "bf16"
+      ],
+      "log_interval_seconds": 10
+    },
+    "observation_state_encoding": "raw",
+    "frozen_dsrl": null,
+    "residual_initialize_from": null,
+    "residual_warmup": {
+      "learner": {
+        "residual_mode": "all",
+        "residual_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "residual_scale": [
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.05,
+          0.005
+        ],
+        "residual_q_bounds": null,
+        "noise_steps": 1,
+        "noise_scale": 1.5,
+        "noise_dim": 20,
+        "hidden_dim": 256,
+        "batch_size": 256,
+        "policy_lr": 0.0001,
+        "q_lr": 0.0003,
+        "tau": 0.005,
+        "init_alpha": 0.01,
+        "auto_alpha": true,
+        "target_entropy": null,
+        "bootstrap_truncated": false,
+        "lambda_s": null,
+        "lambda_t": null
+      },
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32,
+      "loss": {
+        "target_mode": "behavior",
+        "actor_q_weight": 1.0,
+        "actor_l2_weight": 1.0,
+        "entropy_weight": 0.0
+      }
+    }
+  },
+  "description": "Fresh PAP Wall-OSS DSRL100k with concurrent actor/critic residual warmup; only DSRL actions are executed. Queue after the elevator experiment."
+}

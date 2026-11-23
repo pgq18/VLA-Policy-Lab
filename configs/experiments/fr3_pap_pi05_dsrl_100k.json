@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "name": "fr3_pap_pi05_dsrl_100k",
+  "description": "Fresh DSRL100k with one learned 32-D noise vector shared across the 16 action positions, using frozen pi0.5 step9339, multimodal prefix/KV cache and corrected bowl stability. No prior RL weights or replay are resumed.",
+  "task": {
+    "plugin": "fr3_pap",
+    "config": {
+      "scene_config": "${project_root}/configs/fr3_pap.json",
+      "num_envs": 64,
+      "gpu": 0,
+      "headless": true,
+      "physics_backend": "gpu",
+      "physics_dt": 0.01,
+      "control_hz": 25.0,
+      "horizon": 16,
+      "gamma": 0.995,
+      "max_episode_seconds": 18.0,
+      "spacing_m": 3.0,
+      "render_resolution": [
+        640,
+        480
+      ],
+      "image_output_resolution": [
+        640,
+        480
+      ],
+      "renderer_profile": "calibrated",
+      "observation_render_frames": 1,
+      "reset_render_frames": 2,
+      "cpu_threads": 8,
+      "png_workers": 8,
+      "smoothing": {
+        "mode": "none"
+      },
+      "randomization": {
+        "enabled": true,
+        "bowl_enabled": true,
+        "x_range_m": [
+          0.4,
+          0.7
+        ],
+        "y_range_m": [
+          -0.3,
+          0.3
+        ],
+        "bowl_x_range_m": [
+          0.4,
+          0.7
+        ],
+        "bowl_y_range_m": [
+          -0.3,
+          0.3
+        ],
+        "yaw_range_deg": [
+          -30.0,
+          30.0
+        ],
+        "range_reference": "center"
+      },
+      "reward": {
+        "success": 1.0,
+        "failure": 0.0
+      },
+      "terminate_on_success": true,
+      "log_dir": "${project_root}/outputs/fr3_pap_pi05_sharednoise_wide_450_dsrl100k/simulation",
+      "outcome": {
+        "velocity_source": "pose_delta",
+        "bowl_support_source": "contact_force"
+      }
+    }
+  },
+  "model": {
+    "plugin": "pi05",
+    "config": {
+      "checkpoint": "/home/pengguanqi/Models/fr3_pap95_pi05_fullft_step9339_20261117",
+      "device": "cuda:0",
+      "vision_attention": "eager"
+    }
+  },
+  "nodes": {
+    "simulation": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19761,
+        "transport": "http"
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    },
+    "inference": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19760,
+        "transport": "ws",
+        "max_message_bytes": 536870912
+      },
+      "service": {
+        "cache_size": 192,
+        "cache_ttl": 600,
+        "batch_size": 8,
+        "collect_timing": true
+      }
+    }
+  },
+  "run": {
+    "method": "dsrl",
+    "mode": "train",
+    "device": "cuda:0",
+    "seed": 42,
+    "observation_state_encoding": "raw",
+    "endpoints": {
+      "timeout": 300,
+      "max_message_bytes": 536870912,
+      "image_transport": "auto",
+      "image_workers": 8
+    },
+    "rollout": {
+      "max_transitions": 100000,
+      "execution_horizon": 16,
+      "num_envs": 64,
+      "recent_window": 100,
+      "action_bounds": "clip",
+      "terminal_observation_mode": "state_only_if_no_bootstrap",
+      "fused_step_reset": true
+    },
+    "learner": {
+      "noise_steps": 1,
+      "noise_dim": 32,
+      "noise_scale": 1.5,
+      "target_entropy": 0.0,
+      "batch_size": 256,
+      "hidden_dim": 256,
+      "bootstrap_truncated": false
+    },
+    "update": {
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32
+    },
+    "checkpoint": {
+      "interval": 100000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "human_feedback": {
+      "mode": "environment"
+    },
+    "wandb": {
+      "enabled": false,
+      "project": "pressb-online-rl",
+      "mode": "online",
+      "name": "fr3-pap-pi05-sharednoise32-wide-450-dsrl100k",
+      "tags": [
+        "fr3-pap",
+        "pi05",
+        "dsrl",
+        "100k",
+        "fresh",
+        "64env",
+        "gpu-physx",
+        "chunk16",
+        "recent100",
+        "limit450",
+        "visual-features",
+        "prefix-kv",
+        "pose-stability",
+        "shared-noise",
+        "noise-dim32"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/fr3_pap_pi05_sharednoise_wide_450_dsrl100k/train"
+  }
+}

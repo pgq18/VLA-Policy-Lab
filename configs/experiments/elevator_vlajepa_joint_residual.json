@@ -1,0 +1,24 @@
+{
+  "extends": "elevator_vlajepa_dsrl.json",
+  "name": "elevator_vlajepa_joint_residual",
+  "description": "Train one elevator SAC actor and critic ensemble on paired denoising-noise and XYZ action residuals.",
+  "task": {
+    "config": {"output": "${project_root}/outputs/elevator_vlajepa_joint_residual/simulation"}
+  },
+  "nodes": {
+    "inference": {"server": {"port": 19380}},
+    "simulation": {"server": {"port": 19381}}
+  },
+  "run": {
+    "method": "joint_residual",
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19380",
+      "simulation": "http://127.0.0.1:19381"
+    },
+    "learner": {
+      "residual_mode": "xyz",
+      "residual_scale": [0.02, 0.02, 0.02]
+    },
+    "output_dir": "${project_root}/outputs/elevator_vlajepa_joint_residual/run"
+  }
+}

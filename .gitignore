@@ -1,0 +1,85 @@
+# Reproducible local dependencies and downloaded third-party assets.
+/.conda/
+/.cache/
+/vendor/
+/src/VLA-JEPA/
+/src/ZPRL/
+/ref/wall-x/
+/assets/isaac/
+/assets/generated/
+/assets/reference/
+# Historical camera measurements include machine-local evidence paths.
+/assets/global_camera_registration.json
+/assets/tabletop_camera_registration_v2.json
+/assets/floor_camera_registration_v1.json
+
+# Local datasets and training, evaluation and benchmark output trees.
+/data/
+/datasets/
+outputs
+runs/
+results/
+logs/
+checkpoints/
+checkpoint-[0-9]*/
+checkpoint_[0-9]*/
+rollouts/
+recordings/
+/artifacts/
+/docs/media/
+
+# Model weights, recorded trajectories and dataset shards.
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+pytorch_model*.bin
+*.onnx
+*.npz
+*.parquet
+*.mp4
+*.webm
+
+# Run telemetry also appears under user-specified output directories.
+wandb/
+tensorboard/
+events.out.tfevents.*
+*.log
+metrics.jsonl
+train.jsonl
+rollout.jsonl
+replay.jsonl
+episodes.jsonl
+events.jsonl
+operator_events.jsonl
+rpc_timing.jsonl
+resources.jsonl
+summary.json
+eval_results.json
+train_results.json
+trainer_state.json
+
+# Python/build/editor caches.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+/build/
+/dist/
+.DS_Store
+/.idea/
+/.vscode/
+/.agents/
+/.codex/
+
+# Local credentials/configuration; retain documented examples if added.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.sock

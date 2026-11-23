@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "name": "pap_plus_plus_pi05_dppo",
+  "description": "Fine-tune the native PiPER π0.5 action expert on PAP++ from the step 4076 supervised checkpoint.",
+  "task": {
+    "plugin": "pap_plus_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus_plus.json",
+      "trajectory": "${project_root}/outputs/piper_pap_reconstruction_20261022/dataset_audit/episode_000000.npz",
+      "num_envs": 8,
+      "gpu_ids": [0],
+      "physics_backend": "gpu",
+      "horizon": 16,
+      "gamma": 0.995,
+      "max_episode_seconds": 15,
+      "render_resolution": [640, 480],
+      "renderer_profile": "rl_fast",
+      "observation_render_frames": 2,
+      "reset_render_frames": 2,
+      "smoothing": {"mode": "none"},
+      "randomization": {"position": "markers", "colors": ["red"]},
+      "log_dir": "${project_root}/outputs/pap_plus_plus_pi05_dppo/simulation"
+    }
+  },
+  "model": {
+    "plugin": "pi05",
+    "config": {
+      "checkpoint": "/home/pengguanqi/Models/piper_pap_pi05_step4076_20261118",
+      "device": "cuda:0",
+      "num_inference_steps": 10,
+      "vision_attention": "eager"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {"transport": "ws", "port": 22792, "max_message_bytes": 536870912},
+      "service": {
+        "batch_size": 8,
+        "collect_timing": true,
+        "action_expert": {
+          "transition_std": 0.05,
+          "trainable_scope": "full",
+          "transition_microbatch_size": 2,
+          "shared_prefix_dir": "${project_root}/outputs/pap_plus_plus_pi05_dppo/prefix",
+          "shared_prefix_max_entries": 128
+        }
+      }
+    },
+    "simulation": {
+      "server": {"transport": "http", "port": 22793},
+      "service": {"request_cache_size": 2}
+    }
+  },
+  "run": {
+    "method": "dppo",
+    "mode": "train",
+    "device": "cuda:1",
+    "seed": 42,
+    "endpoints": {"timeout": 600, "max_message_bytes": 536870912},
+    "rollout": {
+      "num_envs": 8, "execution_horizon": 16, "max_transitions": 512, "eval_episodes": 8,
+      "action_bounds": "clip", "terminal_observation_mode": "state_only_if_no_bootstrap"
+    },
+    "dppo": {
+      "rollout_steps": 8, "epochs": 1, "minibatch_size": 16,
+      "actor_lr": 1e-6, "critic_lr": 0.0003, "gae_lambda": 0.95, "bootstrap_truncated": false,
+      "logprob_reduction": "upstream_mean", "logprob_max": 5.0, "gamma_denoising": 0.99,
+      "clip_epsilon": 0.01, "clip_epsilon_min": 0.001, "target_kl": 0.05,
+      "critic_warmup_iterations": 0, "critic_continue_after_kl": true
+    },
+    "checkpoint": {"interval": 256, "keep": null, "include_replay": false},
+    "output_dir": "${project_root}/outputs/pap_plus_plus_pi05_dppo/train"
+  }
+}

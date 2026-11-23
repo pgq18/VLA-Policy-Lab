@@ -1,0 +1,95 @@
+{
+  "extends": "pap_walloss_residual_from_warmup_300k.json",
+  "name": "pap_plus_walloss_joint_residual_scale002_300k",
+  "description": "Fresh joint7 residual300k on PAP+ x60mm, using the completed100k frozen stochastic DSRL. Six arm scales0.02rad plus gripper0.002m, no CartesianIK, warmup initialization or resume.",
+  "task": {
+    "plugin": "pap_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus.json",
+      "scene_overrides": {
+        "box": {
+          "center_xy": [
+            0.37555699432316486,
+            0.20464367372946982
+          ],
+          "size": [
+            0.10544668757677576,
+            0.08798959334382576,
+            0.06351111075864209
+          ],
+          "wall_thickness": 0.005,
+          "yaw_deg": -1.3917636491337193,
+          "geometry_status": "PAP Plus: 80% PAP outer X/Y size, original height and walls; box translated +0.06 m along robot-base X"
+        }
+      },
+      "log_dir": "${project_root}/outputs/pap_plus_joint_residual_scale002_300k_20261115/simulation"
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "port": 19060
+      }
+    },
+    "simulation": {
+      "server": {
+        "port": 19061
+      }
+    }
+  },
+  "run": {
+    "endpoints": {
+      "inference": "ws://127.0.0.1:19060",
+      "simulation": "http://127.0.0.1:19061"
+    },
+    "learner": {
+      "residual_mode": "all",
+      "residual_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "residual_scale": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.002
+      ],
+      "cartesian_residual": null
+    },
+    "frozen_dsrl": {
+      "checkpoint": "/mnt/data/pengguanqi/Data/PressB/outputs/pap_plus_walloss_dsrl_x60mm_100k_20261115/train/checkpoints/step_000000100021.pt",
+      "checkpoint_sha256": "177d4545c4cc07c675e7df5c9b6dcbcfe1f055c413b85e69b51672dad38b4bc7",
+      "deterministic": false
+    },
+    "residual_initialize_from": null,
+    "residual_warmup": null,
+    "checkpoint": {
+      "resume": null
+    },
+    "output_dir": "${project_root}/outputs/pap_plus_joint_residual_scale002_300k_20261115/train",
+    "wandb": {
+      "name": "pap-plus-joint-residual300k-scale002-stochastic-dsrl-x60mm-20261115",
+      "tags": [
+        "pap-plus",
+        "walloss",
+        "action-residual",
+        "joint7",
+        "scale002",
+        "300k",
+        "fresh-init",
+        "x60mm",
+        "64env",
+        "gpu-physx",
+        "frozen-stochastic-dsrl"
+      ]
+    }
+  }
+}

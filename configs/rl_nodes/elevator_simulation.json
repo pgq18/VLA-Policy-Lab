@@ -1,0 +1,39 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8101,
+    "transport": "http"
+  },
+  "service": {
+    "request_cache_size": 8
+  },
+  "backend": {
+    "factory": "pressb.tasks.elevator.parallel:create_backend",
+    "config": {
+      "output": "outputs/elevator_simulation_node",
+      "gpu": 0,
+      "num_envs": 64,
+      "max_seconds": 15,
+      "smoothing_window": 3,
+      "single_gamma": 0.99,
+      "camera_resolution": 224,
+      "floors": [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "panel_randomization": true,
+      "floor_sampling": "random",
+      "physics_backend": "gpu"
+    }
+  }
+}

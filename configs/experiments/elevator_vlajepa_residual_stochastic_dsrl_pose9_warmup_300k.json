@@ -1,0 +1,19 @@
+{
+  "extends": "elevator_vlajepa_residual_stochastic_dsrl_pose9_warmup_100k.json",
+  "name": "elevator_vlajepa_residual_stochastic_dsrl_pose9_warmup_300k",
+  "description": "Fresh 300k residual interaction run from the original DSRL-pretrained actor/critic/optimizer state; do not resume the stopped 35k residual run.",
+  "task": {
+    "config": {
+      "output": "${project_root}/outputs/elevator_residual_stochastic_dsrl_pose9_warmup_300k_20261114/simulation"
+    }
+  },
+  "run": {
+    "rollout": {"max_transitions": 300000},
+    "checkpoint": {"resume": null},
+    "output_dir": "${project_root}/outputs/elevator_residual_stochastic_dsrl_pose9_warmup_300k_20261114/train",
+    "wandb": {
+      "name": "elevator-residual300k-stochastic-dsrl-pose9-warmup-20261114",
+      "tags": ["elevator", "action-residual", "300k", "fresh-from-warmup", "xyz-only", "64env", "gpu-physx", "pose9-rl-state", "random-floors", "frozen-dsrl", "stochastic-dsrl"]
+    }
+  }
+}

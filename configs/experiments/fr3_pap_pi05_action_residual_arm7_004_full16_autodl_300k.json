@@ -1,0 +1,54 @@
+{
+  "extends": "fr3_pap_pi05_action_residual_full16_autodl_300k.json",
+  "name": "fr3_pap_pi05_action_residual_arm7_004_full16_autodl_300k",
+  "description": "Fresh full-chunk residual SAC for FR3 joints 1–7 with scale 0.04 radians. The frozen base policy supplies gripper closure at every step.",
+  "task": {
+    "config": {
+      "log_dir": "${project_root}/outputs/fr3_pap_residual_arm7_004_full16_300k_autodl_20261118/simulation"
+    }
+  },
+  "run": {
+    "learner": {
+      "residual_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "residual_scale": [
+        0.04,
+        0.04,
+        0.04,
+        0.04,
+        0.04,
+        0.04,
+        0.04
+      ]
+    },
+    "checkpoint": {
+      "resume": null
+    },
+    "wandb": {
+      "name": "fr3-pap-frozen-dsrl-full16-arm7-scale004-300k",
+      "tags": [
+        "fr3-pap",
+        "pi05",
+        "action-residual",
+        "300k",
+        "frozen-deterministic-dsrl",
+        "full16",
+        "wide",
+        "limit450",
+        "recent100",
+        "autodl",
+        "isaac6-render-sync",
+        "arm-only",
+        "scale004"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/fr3_pap_residual_arm7_004_full16_300k_autodl_20261118/train"
+  }
+}

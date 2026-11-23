@@ -1,0 +1,21 @@
+{
+  "extends": "../../../configs/experiments/fr3_pap_pi05_joint_residual.json",
+  "name": "autodl_fr3_pap",
+  "task": {
+    "config": {
+      "num_envs": 2,
+      "gpu": 0
+    }
+  },
+  "model": {
+    "config": {
+      "device": "cuda:1"
+    }
+  },
+  "run": {
+    "device": "cuda:2",
+    "rollout": {
+      "num_envs": 2
+    }
+  }
+}

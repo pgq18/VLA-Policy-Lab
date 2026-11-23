@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "name": "autodl_pap_plus_plus_dsrl",
+  "description": "Learn one shared 32-D noise vector for the PiPER PAP policy in 64 PAP++ environments.",
+  "task": {
+    "plugin": "pap_plus_plus",
+    "config": {
+      "scene_config": "${project_root}/configs/piper_pick_place_plus_plus.json",
+      "trajectory": "${project_root}/outputs/piper_pap_reconstruction_20261022/dataset_audit/episode_000000.npz",
+      "python": "${project_root}/.conda/envs/pressb-sim6/bin/python",
+      "num_envs": 64,
+      "gpu_ids": [
+        0
+      ],
+      "horizon": 16,
+      "render_resolution": [
+        640,
+        480
+      ],
+      "render_subframes": 1,
+      "reset_render_frames": 2,
+      "spacing_m": 6,
+      "cpu_threads": 12,
+      "png_workers": 12,
+      "gamma": 0.995,
+      "max_episode_seconds": 15.0,
+      "smoothing": {
+        "mode": "none",
+        "alpha": 0.8
+      },
+      "randomization": {
+        "position": "markers",
+        "colors": [
+          "red"
+        ]
+      },
+      "reward": {
+        "success": 1.0,
+        "failure": 0.0
+      },
+      "outcome": {
+        "stable_seconds": 0.5,
+        "lift_height": 0.04
+      },
+      "terminate_on_drop": true,
+      "drop_below_table_m": 0.05,
+      "startup_timeout": 600,
+      "command_timeout": 600,
+      "renderer_profile": "rl_fast",
+      "observation_render_frames": 2,
+      "log_dir": "${project_root}/outputs/pap_plus_plus_pi05_dsrl_autodl/simulation",
+      "physics_backend": "gpu",
+      "gpu": 0
+    }
+  },
+  "model": {
+    "plugin": "pi05",
+    "config": {
+      "checkpoint": "/root/autodl-tmp/Models/piper_pap_pi05_step4076_20261118",
+      "device": "cuda:0",
+      "num_inference_steps": 4
+    }
+  },
+  "nodes": {
+    "inference": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19980,
+        "transport": "ws",
+        "max_message_bytes": 536870912
+      },
+      "service": {
+        "cache_size": 192,
+        "cache_ttl": 600.0,
+        "batch_size": 16,
+        "collect_timing": true
+      }
+    },
+    "simulation": {
+      "server": {
+        "host": "127.0.0.1",
+        "port": 19981,
+        "transport": "http",
+        "max_message_bytes": 536870912
+      },
+      "service": {
+        "request_cache_size": 2
+      }
+    }
+  },
+  "run": {
+    "method": "dsrl",
+    "mode": "train",
+    "device": "cuda:0",
+    "seed": 42,
+    "observation_state_encoding": "raw",
+    "endpoints": {
+      "timeout": 600,
+      "max_message_bytes": 536870912,
+      "image_transport": "auto",
+      "image_workers": 8
+    },
+    "rollout": {
+      "max_transitions": 100000,
+      "execution_horizon": 16,
+      "num_envs": 64,
+      "recent_window": 100,
+      "action_bounds": "clip",
+      "terminal_observation_mode": "state_only_if_no_bootstrap",
+      "fused_step_reset": true
+    },
+    "learner": {
+      "noise_steps": 1,
+      "noise_dim": 32,
+      "noise_scale": 1.5,
+      "target_entropy": 0.0,
+      "batch_size": 256,
+      "hidden_dim": 256,
+      "bootstrap_truncated": false
+    },
+    "update": {
+      "replay_capacity": 100000,
+      "learning_starts": 2000,
+      "utd": 1,
+      "max_backlog": 1000,
+      "max_updates_per_wait": 32
+    },
+    "checkpoint": {
+      "interval": 10000,
+      "keep": null,
+      "include_replay": true,
+      "resume": null
+    },
+    "human_feedback": {
+      "mode": "environment"
+    },
+    "wandb": {
+      "enabled": false,
+      "project": "pressb-online-rl",
+      "mode": "online",
+      "name": "pap-plus-plus-pi05-dsrl-4step-autodl",
+      "tags": [
+        "pap-plus-plus",
+        "pi05",
+        "dsrl",
+        "4-step",
+        "autodl"
+      ]
+    },
+    "output_dir": "${project_root}/outputs/pap_plus_plus_pi05_dsrl_autodl/train"
+  }
+}
