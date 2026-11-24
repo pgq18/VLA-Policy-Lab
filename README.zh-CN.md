@@ -2,7 +2,7 @@
 
 [English](README.md) · **简体中文**
 
-VLA Policy Lab 是一个用于训练和评估机器人策略的 Python 框架。它支持用 LeRobot 示范数据做监督微调，也支持在并行 Isaac Sim 仿真环境或 PiPER 真机上做在线强化学习。推理、仿真和训练可以部署在不同机器上。
+VLA Policy Lab 是一个用于训练和评估机器人策略的 Python 框架。它支持用 LeRobot 示范数据做监督微调，也支持在并行 Isaac Sim 仿真环境、PiPER 或 Franka Research 3 真机上做在线强化学习。推理、仿真和训练可以部署在不同机器上。
 
 框架内置 VLA-JEPA、Wall-OSS、Diffusion Policy 和 LeRobot π₀.₅。任务包括电梯与桌面按键、抓取放置、方块堆叠和桌面收纳。在线训练可以冻结策略，学习初始噪声（DSRL）、动作残差或同时学习两者，也可以用 DPPO 微调动作专家。
 
@@ -128,7 +128,7 @@ pressb eval --config "$CFG" --resume "$RL_CHECKPOINT" --episodes 10 --seed 43
 
 ## 帮助与资源
 
-- **选择运行方式。** 使用 `pressb collect` 记录策略轨迹，或使用 `pressb train` 加载在线 RL 配置。PiPER 真机使用硬件配置，并在连接机械臂的主机上启动 `pressb real_robot`。[在线 RL](docs/configurable_rl_nodes.md) · [DPPO](docs/dppo.md) · [真机配置](docs/real_robot.md)
+- **选择运行方式。** 使用 `pressb collect` 记录策略轨迹，或使用 `pressb train` 加载在线 RL 配置。PiPER 和 Franka Research 3 真机分别使用对应的硬件配置，并在连接机械臂的主机上启动 `pressb real_robot`。[在线 RL](docs/configurable_rl_nodes.md) · [DPPO](docs/dppo.md) · [真机配置](docs/real_robot.md)
 - **检查配置。** `pressb --help` 列出可用命令，`pressb validate --config "$CFG"` 显示解析后的配置。部署指南中的 `/health` 探测可从客户端核对运行中的服务。
 - **先体验电梯场景。** 无需策略权重即可运行脚本规划的按键动作，并检查接触事件和相机图像。[电梯场景操作步骤](docs/rtx5090_setup.md#run-the-elevator-scene)
 - **使用 AI agent。** 调用 `$operate-vla-policy-lab` 选择实验配置、分配 GPU 并设置节点通信地址。[仓库内的 skill](.agents/skills/operate-vla-policy-lab/SKILL.md)

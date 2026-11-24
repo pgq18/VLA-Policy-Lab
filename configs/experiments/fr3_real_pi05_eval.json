@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "name": "fr3_real_pi05_eval",
+  "task": {
+    "plugin": "franka_real",
+    "config": {
+      "num_envs": 1,
+      "task_id": "fr3_pap",
+      "instruction": "Pick up blue cube and place it in the bowl.",
+      "horizon": 16,
+      "control_hz": 25,
+      "gamma": 0.995,
+      "max_episode_steps": 650,
+      "max_episode_seconds": 120,
+      "watchdog_seconds": 15,
+      "return_to_initial": {
+        "enabled": false,
+        "joints_rad": [0.2187332213, -0.1253174245, 0.2503662705, -1.7772104740, 0.0683597475, 1.6262333393, -0.4718373716],
+        "gripper_closure": 0.0054595773,
+        "speed_rad_s": 0.3,
+        "min_duration_s": 3.5,
+        "max_flange_speed_m_s": 0.075,
+        "source": "pap95_20261116 episode 0, first measured state"
+      },
+      "robot": {
+        "config": {
+          "robot_ip": "172.16.0.2",
+          "actuation_enabled": false,
+          "control_hz": 25,
+          "max_joint_step": 0.05,
+          "alignment_tolerance": 0.15,
+          "enforce_realtime": true,
+          "gripper_speed": 0.1
+        }
+      },
+      "cameras": {
+        "config": {
+          "cameras": {
+            "base": {"serial": "REPLACE_D435I_BASE_SERIAL", "width": 640, "height": 480, "fps": 30},
+            "wrist": {
+              "serial": "REPLACE_D405_WRIST_SERIAL", "width": 640, "height": 480, "fps": 30,
+              "auto_exposure": false, "exposure": 16000, "gain": 16
+            }
+          },
+          "pair_max_skew_ms": 20.0,
+          "max_frame_age_s": 0.5,
+          "timeout_ms": 2000
+        }
+      },
+      "task": {
+        "config": {
+          "directory": "~/.local/state/pressb/fr3_pap/operator",
+          "reset_timeout_s": 300,
+          "labels_enabled": true
+        }
+      }
+    }
+  },
+  "model": {
+    "plugin": "pi05",
+    "config": {"checkpoint": "${project_root}/.cache/fr3_pap_pi05/pretrained_model", "device": "cuda:0"}
+  },
+  "nodes": {
+    "simulation": {"server": {"host": "127.0.0.1", "port": 18741, "transport": "http"}},
+    "inference": {"server": {"host": "127.0.0.1", "port": 18751, "transport": "ws"}}
+  },
+  "run": {
+    "method": "base",
+    "mode": "eval",
+    "device": "cpu",
+    "endpoints": {"timeout": 360, "image_transport": "auto"},
+    "rollout": {
+      "num_envs": 1, "eval_episodes": 1, "execution_horizon": 16, "action_bounds": "clip",
+      "terminal_observation_mode": "full", "fused_step_reset": false
+    },
+    "human_feedback": {"mode": "environment"}
+  }
+}

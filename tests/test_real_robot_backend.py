@@ -14,9 +14,8 @@ import pytest
 from pressb.runtime.client import NodeClient
 from pressb.runtime.contract import decode_image, negotiate
 from pressb.runtime.inference import InferenceService
-from pressb.runtime.real_robot import RealRobotBackend
+from pressb.runtime.real_robot import PhysicalRobotService, RealRobotBackend
 from pressb.runtime.rpc import RPCServer
-from pressb.runtime.simulation import SimulationService
 
 
 class FakeClock:
@@ -72,7 +71,7 @@ class FakeRobot:
                                                          -self.max_delta, self.max_delta), 6)
         self.sent.append(self.last_sent.copy())
         self.state = self.last_sent.copy()
-        self.state[:6] *= .8
+        self.state[:-1] *= .8
         return self.last_sent.copy()
 
     def hold(self):
@@ -90,6 +89,21 @@ class FakeRobot:
 
     def close(self):
         self.closed = True
+
+
+class FakeFranka(FakeRobot):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.state = np.zeros(8)
+        self.last_sent = self.state.copy()
+
+    def describe(self):
+        spec = super().describe()
+        state = dict(names=[f"joint{i}" for i in range(1, 8)] + ["gripper_closure"],
+                     units=["rad"] * 7 + ["unitless"])
+        spec.update(robot_type="fake_franka", state=state)
+        spec["action"].update(**state, control_hz=25., lower=[-2.] * 7 + [0.], upper=[2.] * 7 + [1.])
+        return spec
 
 
 class FakeCameras:
@@ -210,7 +224,7 @@ def inference_metadata(backend):
 @pytest.mark.parametrize("method", ["base", "dsrl", "action_residual"])
 def test_joint7_schema_negotiation_and_fresh_reset_observation(method):
     with environment() as (backend, robot, cameras, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         contract = negotiate(inference_metadata(backend), service.health(), method, execution_horizon=2)
         assert contract["num_envs"] == 1
         assert (contract["action_dim"], contract["state_dim"], contract["control_state_dim"]) == (7, 7, 7)
@@ -234,7 +248,7 @@ def test_joint7_schema_negotiation_and_fresh_reset_observation(method):
 
 def test_applied_command_control_state_and_feedback_are_distinct():
     with environment() as (backend, robot, cameras, _, clock):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         row = service.step(step_request(slot, count=2))["items"][0]
         assert not row["terminated"] and not row["truncated"]
@@ -252,7 +266,7 @@ def test_applied_command_control_state_and_feedback_are_distinct():
 
 def test_discount_uses_executed_ticks_and_timebase_excluding_inference_wait():
     with environment(discount_timebase_hz=15.) as (backend, _, _, _, clock):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         clock.now += 5.  # Synthetic policy inference delay does not execute a control tick.
         row = service.step(step_request(slot, count=2))["items"][0]
@@ -271,9 +285,34 @@ def test_smoothing_uses_previously_applied_controller_setpoint_across_chunks():
         assert robot.requests[-1][6] == pytest.approx(.03)
 
 
+def test_franka_eight_coordinate_commands_smooth_all_seven_joints_across_chunks():
+    smoothing = {"mode": "joint_ema", "alpha": .5}
+    with environment(robot=FakeFranka(), control_hz=25., smoothing=smoothing) as (backend, robot, _, _, clock):
+        service = PhysicalRobotService(backend)
+        contract = negotiate(inference_metadata(backend), service.health(), "base")
+        assert (contract["action_dim"], contract["state_dim"], contract["control_state_dim"]) == (8, 8, 8)
+        slot = reset(service)
+        payload = step_request(slot)
+        for invalid in ([[1.] * 7], [[1.] * 7 + [1.2]], [[1.] * 7 + [-.2]]):
+            payload["items"][0]["actions"] = invalid
+            with pytest.raises(ValueError):
+                service.step(payload)
+        assert not robot.sent and not service.fault
+        for i, closure in enumerate((.9, .3)):
+            before = robot.last_sent.copy()
+            payload["request_id"] = str(i)
+            payload["items"][0].update(step_id=i, actions=[[1.] * 7 + [closure]])
+            row = service.step(payload)["items"][0]
+            np.testing.assert_allclose(robot.requests[-1][:-1], .5 + .5 * before[:-1])
+            assert robot.requests[-1][-1] == pytest.approx(closure)
+            np.testing.assert_allclose(row["observation"]["control_state"], robot.last_sent)
+            np.testing.assert_allclose(row["observation"]["state"], robot.state)
+        assert clock.periods == pytest.approx([1 / 25, 1 / 25])
+
+
 def test_service_retries_and_stale_episode_guards_never_repeat_hardware():
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         assert reset(service) == slot
         assert len(task.resets) == 1
@@ -296,7 +335,7 @@ def test_service_retries_and_stale_episode_guards_never_repeat_hardware():
 
 def test_terminal_signal_within_chunk_stops_remainder_and_preserves_terminal_images():
     with environment(task_ticks=2) as (backend, robot, cameras, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         row = service.step(step_request(reset(service), count=4))["items"][0]
         assert row["terminated"] and not row["truncated"] and row["info"]["success"]
         assert len(robot.sent) == row["info"]["hardware_control_steps"] == 2
@@ -314,7 +353,7 @@ def test_terminal_signal_within_chunk_stops_remainder_and_preserves_terminal_ima
 @pytest.mark.parametrize("limits", [{"max_episode_steps": 2}, {"max_episode_seconds": .05}])
 def test_time_limit_truncates_with_actual_tick_discount(limits):
     with environment(**limits) as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         row = service.step(step_request(reset(service), count=4))["items"][0]
         assert row["truncated"] and not row["terminated"] and not row["info"]["success"]
         assert len(robot.sent) == row["info"]["elapsed_control_steps"] == 2
@@ -324,7 +363,7 @@ def test_time_limit_truncates_with_actual_tick_discount(limits):
 
 def test_preaction_operator_terminal_uses_measured_hold_without_policy_motion():
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         state = robot.state.copy()
         task.result = dict(terminated=True, success=True, reward=2., reason="synthetic_operator_success")
@@ -339,7 +378,7 @@ def test_preaction_operator_terminal_uses_measured_hold_without_policy_motion():
 
 def test_nonterminal_reward_polled_before_action_is_preserved_once(monkeypatch):
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         events = iter([{"reward": 2.}, {}, {}, {}])
         monkeypatch.setattr(task, "poll", lambda: next(events))
@@ -355,7 +394,7 @@ def test_nonterminal_reward_polled_before_action_is_preserved_once(monkeypatch):
 def test_terminal_observation_is_recaptured_with_actual_measured_hold_command(outcome):
     options = {"task_ticks": 1} if outcome == "success" else {"max_episode_steps": 1}
     with environment(**options) as (backend, robot, cameras, _, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         row = service.step(step_request(reset(service), count=4))["items"][0]
         assert row["terminated"] is (outcome == "success")
         assert row["truncated"] is (outcome == "timeout")
@@ -376,7 +415,7 @@ def test_terminal_observation_is_recaptured_with_actual_measured_hold_command(ou
 @pytest.mark.parametrize("fault", ["camera", "missing_view", "bad_pixels", "state", "nonfinite_state", "abort", "command"])
 def test_infrastructure_fault_latches_stop_and_prevents_further_motion(fault):
     with environment() as (backend, robot, cameras, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         if fault == "camera":
             cameras.error = TimeoutError("synthetic camera timeout")
@@ -445,7 +484,7 @@ def test_watchdog_can_stop_while_camera_observation_is_blocked():
 
 def test_watchdog_faults_during_blocked_command_and_rejects_its_late_success(monkeypatch):
     with environment(watchdog=True, watchdog_seconds=.04) as (backend, robot, _, _, clock):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         started, release = threading.Event(), threading.Event()
         responses, errors = [], []
@@ -529,6 +568,52 @@ def test_readonly_hardware_rejects_rl_reset_without_connecting_or_actuating():
         assert not robot.holds and not robot.sent and not task.resets
 
 
+def test_passive_observation_over_http_and_reset_rejection_do_not_actuate():
+    robot = FakeFranka(actuation_enabled=False)
+    with environment(robot=robot, control_hz=25.) as (backend, _, cameras, task, _):
+        service = PhysicalRobotService(backend)
+        assert "read_only_observation" in service.health()["capabilities"]
+        with pytest.raises(ValueError, match="Actuation is disabled"):
+            reset(service)
+        assert not service.fault and not robot.connected
+        with http_service(service) as endpoint:
+            client = NodeClient(endpoint, timeout=2)
+            try:
+                first = client.call("/observe", {})
+                robot.state[:] = [.25] * 7 + [.6]
+                second = client.call("/observe", {})
+            finally:
+                client.close()
+        assert first["info"]["submitted_commands"] == second["info"]["submitted_commands"] == 0
+        assert second["info"]["read_only"] is True
+        assert set(second["observation"]["images"]) == set(cameras.config)
+        np.testing.assert_allclose(second["observation"]["state"], robot.state)
+        assert second["observation"]["control_state"] == second["observation"]["state"]
+        assert not service.slots and service.run_id is None and not task.resets
+        assert service.close_run({})["closed"]
+    assert robot.closed and not robot.holds and not robot.sent and not robot.stop_event.is_set()
+
+
+def test_passive_camera_fault_requires_restart_without_sending_motor_commands():
+    with environment(robot=FakeRobot(actuation_enabled=False)) as (backend, robot, cameras, _, _):
+        service = PhysicalRobotService(backend)
+        cameras.error = RuntimeError("synthetic capture failure")
+        with pytest.raises(RuntimeError, match="capture failure"):
+            service.handlers["/observe"]({})
+        assert backend.status()["fault"] and service.fault
+        with pytest.raises(RuntimeError, match="healthy node"):
+            service.handlers["/observe"]({})
+    assert robot.closed and not robot.holds and not robot.sent and not robot.stop_event.is_set()
+
+
+def test_actuation_enabled_node_cannot_connect_via_read_only_observation():
+    with environment() as (backend, robot, cameras, _, _):
+        assert "/observe" not in PhysicalRobotService(backend).handlers
+        with pytest.raises(ValueError, match="actuation disabled"):
+            backend.observe()
+        assert not robot.connected and not cameras.connected
+
+
 @pytest.mark.parametrize("num_envs", [0, 2, True, 1.0])
 def test_only_one_physical_environment_is_supported(num_envs):
     with pytest.raises(ValueError, match="exactly one"):
@@ -557,7 +642,7 @@ def test_default_hardware_and_camera_factories_advertise_compatible_abi_without_
 
 def test_close_run_holds_robot_and_allows_a_new_owner_and_reset():
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         service.step(step_request(slot))
         hold_count = len(robot.holds)
@@ -575,7 +660,7 @@ def test_close_run_holds_robot_and_allows_a_new_owner_and_reset():
 
 def test_external_end_is_idempotent_preserves_step_response_and_allows_reset():
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         step_payload = step_request(reset(service))
         response = service.step(step_payload)
         slot = response["items"][0]
@@ -603,7 +688,7 @@ def test_external_end_is_idempotent_preserves_step_response_and_allows_reset():
 @pytest.mark.parametrize("invalid", ["run", "episode", "step", "boolean_step", "env", "duplicate_env"])
 def test_external_end_rejects_wrong_owner_or_identity_before_touching_hardware(invalid):
     with environment() as (backend, robot, _, task, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = service.step(step_request(reset(service)))["items"][0]
         payload = dict(run_id="run", request_id="external-end", items=[{
             key: slot[key] for key in ("env_id", "episode_id", "step_id")}])
@@ -630,7 +715,7 @@ def test_external_end_rejects_wrong_owner_or_identity_before_touching_hardware(i
 @pytest.mark.parametrize("operation", ["close_run", "end_episode"])
 def test_failed_hold_during_close_or_external_end_keeps_ownership_and_latches_fault(operation):
     with environment() as (backend, robot, _, _, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         slot = reset(service)
         robot.read_error = RuntimeError("synthetic hold feedback failure")
         payload = dict(run_id="run", request_id="failed-end", items=[{
@@ -685,7 +770,7 @@ def http_service(service):
 
 def test_real_http_client_replays_an_identical_request_without_repeating_actuation():
     with environment(task_ticks=2) as (backend, robot, _, _, _):
-        service = SimulationService(backend)
+        service = PhysicalRobotService(backend)
         with http_service(service) as endpoint:
             client = NodeClient(endpoint, timeout=2)
             try:
@@ -710,7 +795,7 @@ def test_generic_trainer_runs_over_real_http_with_fake_hardware_and_labels(tmp_p
     torch.set_num_threads(1)
     try:
         with environment(task_ticks=3) as (backend, robot, _, task, _):
-            simulation = SimulationService(backend)
+            simulation = PhysicalRobotService(backend)
             fake_policy = FakeInferenceBackend(backend)
             inference = InferenceService(fake_policy, batch_size=1)
             with http_service(simulation) as simulation_endpoint, http_service(inference) as inference_endpoint:

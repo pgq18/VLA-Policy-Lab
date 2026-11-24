@@ -23,6 +23,7 @@ _PLUGINS = {
         "tabletop_cleanup": "pressb.tasks.tabletop_cleanup.parallel:create_backend",
         "fr3_pap": "pressb.tasks.fr3_pap.backend:create_backend",
         "piper_real": "pressb.runtime.real_robot:create_backend",
+        "franka_real": "pressb.runtime.real_robot:create_franka_backend",
     },
     "model": {
         "walloss": "pressb.models.walloss:create_backend",

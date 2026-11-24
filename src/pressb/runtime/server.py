@@ -121,6 +121,9 @@ def run_service(kind, config_path):
         if kind == "inference":
             from .inference import InferenceService
             service = InferenceService(backend, **config.get("service", {}))
+        elif kind == "real_robot" or backend.describe().get("environment_type") == "real_robot":
+            from .real_robot import PhysicalRobotService
+            service = PhysicalRobotService(backend, **config.get("service", {}))
         else:
             from .simulation import SimulationService
             service = SimulationService(backend, **config.get("service", {}))

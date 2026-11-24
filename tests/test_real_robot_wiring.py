@@ -85,6 +85,8 @@ class PhysicalBackend:
     def describe(self):
         return dict(schema_version=2, node_type="simulation", task_id="physical-fixture", num_envs=1,
                     environment_type="real_robot" if self.physical else "simulation",
+                    capabilities=["read_only_observation"] if self.physical else [],
+                    execution={"actuation_enabled": False},
                     observation=dict(state=dict(names=["joint1"], units=["rad"]), cameras=[]),
                     action=dict(representation="joint_position", frame="robot_base", names=["joint1"],
                                 units=["rad"], horizon=1, control_hz=30),
@@ -105,6 +107,9 @@ def test_physical_backend_http_defaults_and_sigterm_close_hardware(tmp_path, mon
 
     class FakeHTTP:
         def __init__(self, address, handlers, *, token):
+            assert "/observe" in handlers
+            with pytest.raises(ValueError, match="Actuation is disabled"):
+                handlers["/reset"]({})
             calls.append((address, handlers["/health"]({}), token))
 
         def __enter__(self):
@@ -155,3 +160,36 @@ def test_real_robot_restores_sigterm_if_backend_loading_fails(tmp_path, monkeypa
     with pytest.raises(RuntimeError, match="hardware unavailable"):
         server.run_service("real_robot", node)
     assert signal.getsignal(signal.SIGTERM) == previous_sigterm
+
+
+@pytest.mark.parametrize("method,recipe", [("base", "eval"), ("dsrl", "dsrl")])
+def test_fr3_physical_recipe_matches_policy_before_connect(tmp_path, monkeypatch, method, recipe):
+    from pressb.robots.franka import real
+    from pressb.runtime.contract import negotiate
+
+    config = load_experiment(PROJECT_ROOT / f"configs/experiments/fr3_real_pi05_{recipe}.json")
+    node = config["nodes"]["simulation"]
+    node["backend"]["config"]["task"]["config"]["directory"] = str(tmp_path / "operator")
+    assert config["factories"]["task"] == "pressb.runtime.real_robot:create_franka_backend"
+    assert config["nodes"]["trainer"]["method"] == method
+    monkeypatch.setattr(real, "_load_native", lambda: pytest.fail("Offline health opened the SDK"))
+    backend = server.load_backend(node["backend"], kind="task")
+    try:
+        health = backend.describe()
+        assert health["environment_type"] == "real_robot" and health["num_envs"] == 1
+        assert health["execution"]["actuation_enabled"] is False
+        assert not health["execution"]["return_to_initial"]["enabled"]
+        assert "read_only_observation" in health["capabilities"]
+        names = [f"joint{i}" for i in range(1, 8)] + ["gripper_closure"]
+        units = ["rad"] * 7 + ["unitless"]
+        # FR3 pi0.5 wire contract recorded alongside the trained checkpoint.
+        model = dict(schema_version=2, node_type="inference", model_id="fr3-pap",
+                     observation=dict(state=dict(names=names, units=units), cameras=["base", "wrist"]),
+                     action=dict(representation="joint_position", frame="robot_base", names=names,
+                                 units=units, horizon=16, control_hz=25), feature_dim=2048,
+                     noise={"shape": [16, 32]},
+                     capabilities=["encode", "decode", "features", "context_cache", "external_initial_noise"])
+        assert negotiate(model, health, method, 16)["action_dim"] == 8
+        assert backend.status()["robot"]["submitted_commands"] == 0
+    finally:
+        backend.close()

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import partial
 import importlib
+from itertools import product
 import math
 import threading
 import time
@@ -17,7 +20,7 @@ def _load_sdk():
     try:
         return importlib.import_module("pyrealsense2")
     except ImportError as exc:
-        raise ImportError("RealSense capture requires pyrealsense2; install pressb[real-robot].") from exc
+        raise ImportError("RealSense capture requires pyrealsense2 (pressb[real-robot] or pressb[franka-real]).") from exc
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,9 @@ class RealSenseCameraConfig:
     width: int = 640
     height: int = 480
     fps: int = 30
+    auto_exposure: bool | None = None
+    exposure: float | None = None
+    gain: float | None = None
 
     def __post_init__(self):
         if not isinstance(self.serial, str) or not self.serial.strip() or self.serial != self.serial.strip():
@@ -34,6 +40,52 @@ class RealSenseCameraConfig:
             value = getattr(self, field)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"Camera {field} must be a positive integer.")
+        if self.auto_exposure is not None and not isinstance(self.auto_exposure, bool):
+            raise ValueError("Camera auto_exposure must be a boolean.")
+        for field in ("exposure", "gain"):
+            value = getattr(self, field)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
+                or value < 0 or (field == "exposure" and value == 0)
+            ):
+                raise ValueError(f"Invalid camera {field}: {value!r}")
+        if self.auto_exposure is True and (self.exposure is not None or self.gain is not None):
+            raise ValueError("Manual exposure or gain requires auto exposure to be disabled.")
+
+    def color_options(self):
+        options = {}
+        auto = self.auto_exposure
+        if self.exposure is not None or self.gain is not None:
+            auto = False
+        if auto is not None:
+            options["enable_auto_exposure"] = float(auto)
+        if self.exposure is not None:
+            options["exposure"] = self.exposure
+        if self.gain is not None:
+            options["gain"] = self.gain
+        return options
+
+
+def _set_color_options(sdk, device, options):
+    sensors = device.query_sensors()
+    candidates = [s for s in sensors if any(p.stream_type() == sdk.stream.color for p in s.get_active_streams())]
+    if not candidates:
+        # D405 exposes RGB through its stereo module, while D435i has a separate color sensor.
+        sensor_name = "Stereo Module" if "D405" in device.get_info(sdk.camera_info.name) else "RGB Camera"
+        candidates = [s for s in sensors if s.get_info(sdk.camera_info.name) == sensor_name]
+    if len(candidates) != 1:
+        raise RuntimeError("Cannot identify a unique RealSense color sensor for exposure controls.")
+    sensor = candidates[0]
+    for name, value in options.items():
+        option = getattr(sdk.option, name)
+        if not sensor.supports(option) or sensor.is_option_read_only(option):
+            raise ValueError(f"RealSense color sensor needs writable {name}.")
+        limits = sensor.get_option_range(option)
+        if not limits.min <= value <= limits.max:
+            raise ValueError(f"RealSense {name}={value} outside [{limits.min}, {limits.max}].")
+    for name, value in options.items():
+        sensor.set_option(getattr(sdk.option, name), value)
+    return {name: sensor.get_option(getattr(sdk.option, name)) for name in options}
 
 
 def _device_info(sdk, device):
@@ -54,29 +106,32 @@ def discover_realsense_devices() -> list[dict[str, Any]]:
 class RealSenseCameras:
     """Read RGB arrays from a logical-name -> physical-serial mapping.
 
-    Each read discards queued frames and waits for new frames within one batch
+    By default each read discards queued frames and waits for new frames within one batch
     timeout. Frame numbers and device timestamps must advance. System/global
     timestamps additionally enforce capture age; hardware-clock timestamps cannot
     be compared across devices or to host time, so their capture age is unknown.
     ``metadata`` distinguishes capture age from age since host receipt. Cameras
-    are acquired independently; this class does not claim hardware synchronization.
+    are acquired independently. With pair_max_skew_ms, software matches two recent
+    RGB frames using the RealSense SDK global clock, when shared by both streams.
 
     The class is single-caller: do not call read/connect/close concurrently. The
-    SDK is imported only by connect/discovery. No persistent sensor options,
-    firmware settings, depth emitters, or hardware synchronization are changed.
+    SDK is imported only by connect/discovery. Color controls are written only
+    for cameras configured with exposure settings.
     """
 
     def __init__(self, config: Mapping[str, Any], *, timeout_ms: int = 2000,
-                 max_frame_age_s: float = .5, close_timeout_s: float = 5.):
+                 max_frame_age_s: float = .5, close_timeout_s: float = 5.,
+                 pair_max_skew_ms: float | None = None):
         if not isinstance(config, Mapping):
             raise ValueError("Camera config must map logical names to explicit serials.")
         if "cameras" in config:
-            extra = set(config) - {"cameras", "timeout_ms", "max_frame_age_s", "close_timeout_s"}
+            extra = set(config) - {"cameras", "timeout_ms", "max_frame_age_s", "close_timeout_s", "pair_max_skew_ms"}
             if extra:
                 raise ValueError(f"Unknown RealSense source settings: {sorted(extra)}")
             timeout_ms = config.get("timeout_ms", timeout_ms)
             max_frame_age_s = config.get("max_frame_age_s", max_frame_age_s)
             close_timeout_s = config.get("close_timeout_s", close_timeout_s)
+            pair_max_skew_ms = config.get("pair_max_skew_ms", pair_max_skew_ms)
             config = config["cameras"]
         if not isinstance(config, Mapping) or not config:
             raise ValueError("At least one explicit camera name/serial mapping is required.")
@@ -103,12 +158,21 @@ class RealSenseCameras:
             raise ValueError("Duplicate camera serials: each logical camera must use a distinct device.")
         if isinstance(timeout_ms, bool) or not isinstance(timeout_ms, int) or timeout_ms <= 0:
             raise ValueError("timeout_ms must be a positive integer.")
-        for name, value in (("max_frame_age_s", max_frame_age_s), ("close_timeout_s", close_timeout_s)):
+        durations = {"max_frame_age_s": max_frame_age_s, "close_timeout_s": close_timeout_s}
+        if pair_max_skew_ms is not None:
+            if len(self.config) != 2:
+                raise ValueError("RealSense frame pairing requires two cameras.")
+            durations["pair_max_skew_ms"] = pair_max_skew_ms
+        for name, value in durations.items():
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and positive.")
         self.timeout_ms = timeout_ms
         self.max_frame_age_s = float(max_frame_age_s)
         self.close_timeout_s = float(close_timeout_s)
+        self.pair_max_skew_ms = pair_max_skew_ms
+        self._condition = threading.Condition()
+        self._history = {name: deque(maxlen=4) for name in self.config}
+        self._capture_error: Exception | None = None
         self.metadata: dict[str, dict[str, Any]] = {}
         self.devices: dict[str, dict[str, Any]] = {}
         self._pipelines: dict[str, Any] = {}
@@ -138,7 +202,10 @@ class RealSenseCameras:
                 stream_config = sdk.config()
                 stream_config.enable_device(spec.serial)
                 stream_config.enable_stream(sdk.stream.color, spec.width, spec.height, sdk.format.rgb8, spec.fps)
-                profile = pipeline.start(stream_config)
+                if self.pair_max_skew_ms is None:
+                    profile = pipeline.start(stream_config)
+                else:
+                    profile = pipeline.start(stream_config, partial(self._capture, name))
                 self._pipelines[name] = pipeline
                 stream = profile.get_stream(sdk.stream.color).as_video_stream_profile()
                 actual = (stream.width(), stream.height(), stream.fps(), stream.format())
@@ -146,6 +213,8 @@ class RealSenseCameras:
                 if actual != expected:
                     raise RuntimeError(f"Camera {name!r} stream differs from requested RGB mode: {actual}")
                 self.devices[name] = available[spec.serial]
+                if options := spec.color_options():
+                    self.devices[name]["color_controls"] = _set_color_options(sdk, profile.get_device(), options)
             self._previous.clear()
             self.metadata.clear()
             self._connected = True
@@ -163,6 +232,8 @@ class RealSenseCameras:
         deadline = time.monotonic() + self.timeout_ms / 1000.
         # Clear stale output even on failure: consumers must never reuse old metadata.
         self.metadata = {}
+        if self.pair_max_skew_ms is not None:
+            return self._read_pair(deadline)
         for name, pipeline in self._pipelines.items():
             while pipeline.poll_for_frames():
                 if time.monotonic() >= deadline:
@@ -188,23 +259,7 @@ class RealSenseCameras:
                 previous = self._previous.get(name)
                 if previous is not None and (number <= previous[0] or timestamp <= previous[1]):
                     continue
-                domain = frame.get_frame_timestamp_domain()
-                comparable = domain in (self._sdk.timestamp_domain.system_time,
-                                         self._sdk.timestamp_domain.global_time)
-                capture_age = received_wall - timestamp / 1000. if comparable else None
-                if capture_age is not None and (capture_age > self.max_frame_age_s or capture_age < -.1):
-                    raise RuntimeError(f"Camera {name!r} returned a stale or future frame (age={capture_age:.3f}s).")
-                array = np.asanyarray(frame.get_data())
-                spec = self.config[name]
-                if array.shape != (spec.height, spec.width, 3) or array.dtype != np.uint8:
-                    raise RuntimeError(f"Camera {name!r} returned invalid RGB shape/dtype: {array.shape}, {array.dtype}")
-                images[name] = array.copy()  # SDK buffers may be reused after the frame is released.
-                metadata[name] = {
-                    "serial": spec.serial, "frame_number": number, "device_timestamp_ms": timestamp,
-                    "timestamp_domain": str(domain), "host_received_monotonic_s": received,
-                    "host_received_unix_s": received_wall, "capture_age_s": capture_age,
-                    "color_order": "RGB", "shape": list(array.shape),
-                }
+                images[name], metadata[name] = self._copy_rgb(name, frame, number, timestamp, received, received_wall)
                 self._previous[name] = (number, timestamp)
                 break
         now = time.monotonic()
@@ -214,6 +269,114 @@ class RealSenseCameras:
             if age > self.max_frame_age_s:
                 raise RuntimeError(f"Camera {name!r} frame became stale while reading the camera batch.")
         self.metadata = metadata
+        return images
+
+    def _copy_rgb(self, name, frame, number, timestamp, received, received_wall):
+        domain = frame.get_frame_timestamp_domain()
+        comparable = domain in (self._sdk.timestamp_domain.system_time, self._sdk.timestamp_domain.global_time)
+        capture_age = received_wall - timestamp / 1000. if comparable else None
+        if capture_age is not None and (capture_age > self.max_frame_age_s or capture_age < -.1):
+            raise RuntimeError(f"Camera {name!r} returned a stale or future frame (age={capture_age:.3f}s).")
+        array = np.asanyarray(frame.get_data())
+        spec = self.config[name]
+        if array.shape != (spec.height, spec.width, 3) or array.dtype != np.uint8:
+            raise RuntimeError(f"Camera {name!r} returned invalid RGB shape/dtype: {array.shape}, {array.dtype}")
+        row = {
+            "serial": spec.serial, "frame_number": number, "device_timestamp_ms": timestamp,
+            "timestamp_domain": str(domain), "host_received_monotonic_s": received,
+            "host_received_unix_s": received_wall, "capture_age_s": capture_age,
+            "color_order": "RGB", "shape": list(array.shape),
+        }
+        if "color_controls" in self.devices[name]:
+            row["color_controls"] = self.devices[name]["color_controls"]
+        return array.copy(), row
+
+    def _capture(self, name, frame):
+        # The SDK calls this on its capture thread. Own the pixels before returning.
+        if not self._connected:
+            return
+        try:
+            received, received_wall = time.monotonic(), time.time()
+            if frame.is_frameset():
+                color = frame.as_frameset().get_color_frame()
+            elif frame.get_profile().stream_type() == self._sdk.stream.color:
+                color = frame.as_video_frame()
+            else:
+                return
+            if not color:
+                return
+            number, timestamp = int(color.get_frame_number()), float(color.get_timestamp())
+            if not math.isfinite(timestamp):
+                raise RuntimeError(f"Camera {name!r} returned a nonfinite timestamp.")
+            packet = self._copy_rgb(name, color, number, timestamp, received, received_wall)
+            with self._condition:
+                history = self._history[name]
+                if history:
+                    last = history[-1][1]
+                    if number <= last["frame_number"] or timestamp <= last["device_timestamp_ms"]:
+                        return
+                history.append(packet)
+                self._condition.notify_all()
+        except Exception as exc:
+            with self._condition:
+                self._capture_error = exc
+                self._condition.notify_all()
+
+    def _recent_packets(self, name, now):
+        history = self._history[name]
+        if not history:
+            return []
+        previous_number = self._previous.get(name, (-1, 0))[0]
+        latest_receipt = history[-1][1]["host_received_monotonic_s"]
+        cutoff = max(now - self.max_frame_age_s, latest_receipt - 2 / self.config[name].fps)
+        candidates = []
+        for image, row in history:
+            receipt = row["host_received_monotonic_s"]
+            age = now - receipt + (row["capture_age_s"] or 0.)
+            if row["frame_number"] > previous_number and receipt >= cutoff and age <= self.max_frame_age_s:
+                candidates.append((image, row))
+        return candidates
+
+    def _select_pair(self, candidates):
+        global_time = str(self._sdk.timestamp_domain.global_time)
+        if any(row["timestamp_domain"] != global_time for frames in candidates for _, row in frames):
+            latest = tuple(frames[-1] for frames in candidates)
+            return latest, {"status": "independent", "reason": "unshared_timestamp_domain"}
+        ranked = []
+        for pair in product(*candidates):
+            a, b = (row["device_timestamp_ms"] for _, row in pair)
+            ranked.append((abs(a - b), min(a, b), pair))
+        acceptable = [entry for entry in ranked if entry[0] <= self.pair_max_skew_ms]
+        if acceptable:
+            # Prefer the newest acceptable observation over an older, closer pair.
+            skew, _, selected = max(acceptable, key=lambda entry: (entry[1], -entry[0]))
+        else:
+            skew, _, selected = min(ranked, key=lambda entry: (entry[0], -entry[1]))
+        return selected, {
+            "status": "matched" if acceptable else "over_budget", "skew_ms": skew,
+            "max_skew_ms": self.pair_max_skew_ms, "clock": "realsense_global_time_sdk_estimate",
+        }
+
+    def _read_pair(self, deadline):
+        with self._condition:
+            while True:
+                if self._capture_error is not None:
+                    error, self._capture_error = self._capture_error, None
+                    raise error
+                now = time.monotonic()
+                candidates = [self._recent_packets(name, now) for name in self.config]
+                if all(candidates):
+                    break
+                if now >= deadline:
+                    raise TimeoutError("Timed out waiting for two fresh RealSense RGB frames.")
+                self._condition.wait(deadline - now)
+
+        selected, pairing = self._select_pair(candidates)
+        images = {}
+        for name, (image, row) in zip(self.config, selected, strict=True):
+            images[name] = image
+            self.metadata[name] = dict(row, frame_age_s=now - row["host_received_monotonic_s"], pairing=pairing)
+            self._previous[name] = (row["frame_number"], row["device_timestamp_ms"])
         return images
 
     def close(self):
@@ -250,6 +413,9 @@ class RealSenseCameras:
             raise TimeoutError(f"Camera stop timed out after {self.close_timeout_s}s: {pending}")
         if failures:
             raise RuntimeError("Camera stop failed: " + "; ".join(failures))
+        for history in self._history.values():
+            history.clear()
+        self._capture_error = None
         self._context = None
 
     def __enter__(self):

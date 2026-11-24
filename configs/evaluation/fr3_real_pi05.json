@@ -20,7 +20,7 @@
   "human_feedback": {"mode": "environment"},
   "operator_console": {
     "ssh_host": "franka",
-    "command": ["/home/pnp/Workspace/lerobot/franka_pressb_operator.sh"],
+    "command": ["pressb-robot-operator", "--directory", "~/.local/state/pressb/fr3_pap/operator"],
     "timeout_s": 5,
     "poll_interval_s": 0.5
   },

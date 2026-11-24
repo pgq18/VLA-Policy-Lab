@@ -1,0 +1,12 @@
+{
+  "extends": "fr3_real_pi05_eval.json",
+  "name": "fr3_real_pi05_dsrl",
+  "run": {
+    "method": "dsrl",
+    "mode": "train",
+    "device": "cuda:0",
+    "rollout": {"max_transitions": 10000},
+    "learner": {"noise_steps": 1, "noise_scale": 1.5, "bootstrap_truncated": false},
+    "checkpoint": {"interval": 1000, "include_replay": true}
+  }
+}

@@ -20,6 +20,15 @@ class FakeFrame:
     def get_data(self):
         return self.data
 
+    def is_frameset(self):
+        return False
+
+    def get_profile(self):
+        return SimpleNamespace(stream_type=lambda: "color")
+
+    def as_video_frame(self):
+        return self
+
     def get_frame_number(self):
         return self.number
 
@@ -36,6 +45,12 @@ class FakeFrames:
 
     def get_color_frame(self):
         return self.frame
+
+    def as_frameset(self):
+        return self
+
+    def is_frameset(self):
+        return True
 
 
 class FakeConfig:
@@ -59,8 +74,9 @@ class FakePipeline:
         self.poll_count = 0
         self.stop_count = 0
 
-    def start(self, config):
+    def start(self, config, callback=None):
         self.config = config
+        self.callback = callback
         self.serial = config.serial
         if self.serial in self.sdk.start_errors:
             raise RuntimeError("camera start failed")
@@ -72,7 +88,8 @@ class FakePipeline:
             format=lambda: pixel_format,
         )
         return SimpleNamespace(
-            get_stream=lambda _stream: SimpleNamespace(as_video_stream_profile=lambda: video)
+            get_stream=lambda _stream: SimpleNamespace(as_video_stream_profile=lambda: video),
+            get_device=lambda: self.sdk.devices[self.serial],
         )
 
     def poll_for_frames(self):
@@ -96,6 +113,7 @@ class FakePipeline:
 class FakeSDK:
     stream = SimpleNamespace(color="color")
     format = SimpleNamespace(rgb8="rgb8")
+    option = SimpleNamespace(enable_auto_exposure="enable_auto_exposure", exposure="exposure", gain="gain")
     camera_info = SimpleNamespace(
         serial_number="serial_number", name="name", firmware_version="firmware_version",
         usb_type_descriptor="usb_type_descriptor", physical_port="physical_port",
@@ -111,6 +129,7 @@ class FakeSDK:
         self.queued = {}
         self.start_errors = set()
         self.stop_events = {}
+        self.devices = {}
 
     def context(self):
         devices = [
@@ -340,3 +359,107 @@ def test_close_timeout_does_not_block_on_sdk_stop(source, sdk):
         assert sdk.pipelines[0].stop_count == 1
     finally:
         release.set()
+
+
+class FakeSensor:
+    def __init__(self, name, active_streams):
+        self.name = name
+        self.active_streams = active_streams
+        self.writes = {}
+
+    def get_info(self, key):
+        assert key == "name"
+        return self.name
+
+    def get_active_streams(self):
+        return [SimpleNamespace(stream_type=lambda stream=stream: stream) for stream in self.active_streams]
+
+    def supports(self, option):
+        return option in ("enable_auto_exposure", "exposure", "gain")
+
+    def is_option_read_only(self, option):
+        return False
+
+    def get_option_range(self, option):
+        return SimpleNamespace(min=0, max={"enable_auto_exposure": 1, "exposure": 20000, "gain": 100}[option])
+
+    def set_option(self, option, value):
+        self.writes[option] = value
+
+    def get_option(self, option):
+        return self.writes[option]
+
+
+@pytest.mark.parametrize("active", [("color",), ()])
+def test_wrist_controls_target_d405_color_sensor_only(source, sdk, active):
+    stereo = FakeSensor("Stereo Module", active)
+    other = FakeSensor("Other Module", ())
+    sdk.devices["camera-b"] = SimpleNamespace(get_info=lambda key: "D405", query_sensors=lambda: [other, stereo])
+    wrist = dict(camera_config("camera-b"), auto_exposure=False, exposure=16000, gain=16)
+    with source.RealSenseCameras({"base": camera_config(), "wrist": wrist}) as cameras:
+        expected = {"enable_auto_exposure": 0.0, "exposure": 16000.0, "gain": 16.0}
+        assert list(stereo.writes.items()) == list(expected.items())
+        assert not other.writes
+        assert cameras.devices["wrist"]["color_controls"] == expected
+        assert "color_controls" not in cameras.devices["base"]
+
+
+def test_invalid_wrist_gain_fails_before_any_write_and_stops_streams(source, sdk):
+    stereo = FakeSensor("Stereo Module", ("color",))
+    sdk.devices["camera-b"] = SimpleNamespace(query_sensors=lambda: [stereo])
+    wrist = dict(camera_config("camera-b"), auto_exposure=False, exposure=16000, gain=101)
+    with pytest.raises(ValueError, match="outside"):
+        source.RealSenseCameras({"base": camera_config(), "wrist": wrist}).connect()
+    assert not stereo.writes
+    assert [p.stop_count for p in sdk.pipelines] == [1, 1]
+
+
+def paired_source(source):
+    return source.RealSenseCameras({
+        "cameras": {"base": camera_config(), "wrist": camera_config("camera-b")},
+        "pair_max_skew_ms": 20, "timeout_ms": 10,
+    })
+
+
+def test_pair_selects_newest_acceptable_timestamp_match_and_never_repeats(source, sdk):
+    stamp = time.time() * 1000.0 - 120.0
+    with paired_source(source) as cameras:
+        base, wrist = (p.callback for p in sdk.pipelines)
+        base(FakeFrames(FakeFrame(1, stamp, "global_time")))
+        base(FakeFrames(FakeFrame(2, stamp + 33, "global_time")))
+        base(FakeFrames(FakeFrame(3, stamp + 66, "global_time")))
+        wrist(FakeFrames(FakeFrame(11, stamp, "global_time")))
+        wrist(FakeFrames(FakeFrame(12, stamp + 35, "global_time")))
+        images = cameras.read()
+        np.testing.assert_array_equal(images["base"], 2)
+        np.testing.assert_array_equal(images["wrist"], 12)
+        assert cameras.metadata["wrist"]["pairing"] == {
+            "status": "matched", "skew_ms": pytest.approx(2), "max_skew_ms": 20,
+            "clock": "realsense_global_time_sdk_estimate",
+        }
+        wrist(FakeFrame(13, stamp + 70, "global_time"))
+        images = cameras.read()
+        np.testing.assert_array_equal(images["base"], 3)
+        np.testing.assert_array_equal(images["wrist"], 13)
+        with pytest.raises(TimeoutError):
+            cameras.read()
+        assert cameras.metadata == {}
+
+
+def test_pair_reports_nearest_over_budget_or_independent_clocks(source, sdk):
+    stamp = time.time() * 1000.0 - 120.0
+    with paired_source(source) as cameras:
+        base, wrist = (p.callback for p in sdk.pipelines)
+        base(FakeFrames(FakeFrame(1, stamp, "global_time")))
+        wrist(FakeFrames(FakeFrame(1, stamp + 30, "global_time")))
+        wrist(FakeFrames(FakeFrame(2, stamp + 63, "global_time")))
+        cameras.read()
+        pairing = cameras.metadata["base"]["pairing"]
+        assert pairing["status"] == "over_budget" and pairing["skew_ms"] == pytest.approx(30)
+        assert cameras.metadata["wrist"]["frame_number"] == 1
+    with paired_source(source) as cameras:
+        base, wrist = (p.callback for p in sdk.pipelines[-2:])
+        base(FakeFrames(FakeFrame(1, stamp, "global_time")))
+        wrist(FakeFrames(FakeFrame(1, 100.0, "hardware_clock")))
+        cameras.read()
+        assert cameras.metadata["base"]["pairing"] == {"status": "independent", "reason": "unshared_timestamp_domain"}

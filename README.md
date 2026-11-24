@@ -2,7 +2,7 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-VLA Policy Lab is a Python framework for training and evaluating robot policies. It supports supervised fine-tuning on LeRobot demonstrations and online reinforcement learning through parallel Isaac Sim environments or a physical PiPER arm. Inference, simulation, and training can run on separate machines.
+VLA Policy Lab is a Python framework for training and evaluating robot policies. It supports supervised fine-tuning on LeRobot demonstrations and online reinforcement learning in parallel Isaac Sim environments and on physical PiPER and Franka Research 3 arms. Inference, simulation, and training can run on separate machines.
 
 The framework includes VLA-JEPA, Wall-OSS, Diffusion Policy, and LeRobot π₀.₅. Tasks cover elevator and tabletop button pressing, pick-and-place, cube stacking, and tabletop cleanup. Online training can learn the initial noise (DSRL), action residuals, or both with a frozen policy. DPPO fine-tunes the action expert.
 
@@ -128,7 +128,7 @@ Read `outputs/elevator/$ELEVATOR_RUN/run/status.json` for `episodes`, `successes
 
 ## Help and resources
 
-- **Choose a workflow.** Use `pressb collect` to record policy rollouts or `pressb train` with an online RL recipe. For physical PiPER rollouts, use a hardware recipe and start `pressb real_robot` on the robot host. [Online RL](docs/configurable_rl_nodes.md) · [DPPO](docs/dppo.md) · [Physical robots](docs/real_robot.md)
+- **Choose a workflow.** Use `pressb collect` to record policy rollouts or `pressb train` with an online RL recipe. For PiPER or Franka Research 3 rollouts, select the matching hardware recipe and start `pressb real_robot` on the robot host. [Online RL](docs/configurable_rl_nodes.md) · [DPPO](docs/dppo.md) · [Physical robots](docs/real_robot.md)
 - **Inspect a configuration.** `pressb --help` lists commands. `pressb validate --config "$CFG"` shows the resolved settings. The deployment guide's `/health` probe checks the running services from the client.
 - **Try the elevator scene without policy weights.** Run the scripted button-press sequence and check its contacts and camera streams. [Elevator scene walkthrough](docs/rtx5090_setup.md#run-the-elevator-scene)
 - **Use an AI agent.** Invoke `$operate-vla-policy-lab` to select a recipe, assign GPUs, and configure node connections. [Repository skill](.agents/skills/operate-vla-policy-lab/SKILL.md)

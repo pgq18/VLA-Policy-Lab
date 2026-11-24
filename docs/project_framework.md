@@ -43,4 +43,4 @@ For each of `task` and `model`, select a built-in `plugin` or give a Python `fac
 | Model adapter | Implements `describe`, `encode_batch`, `decode_batch` and `close`. It owns model loading, normalization, feature extraction and unit conversion. |
 | Trainer | Negotiates camera, state, action and timing contracts, then runs evaluation, collection or learning through the same services. |
 
-The built-in plugin map lives in `src/pressb/registry.py`. Native task implementations live under `src/pressb/tasks/`, model adapters under `src/pressb/models/`, and task-independent service code under `src/pressb/runtime/`. A physical PiPER can provide the environment role through the same rollout interface. [Physical robot setup](real_robot.md)
+The built-in plugin map lives in `src/pressb/registry.py`. Native task implementations live under `src/pressb/tasks/`, model adapters under `src/pressb/models/`, and task-independent service code under `src/pressb/runtime/`. A physical PiPER (`piper_real`) or Franka Research 3 (`franka_real`) can provide the environment through the same rollout interface. [Physical robot setup](real_robot.md)

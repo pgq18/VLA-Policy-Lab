@@ -18,7 +18,9 @@ import time
 
 import numpy as np
 
+from pressb.control.joint_actions import JointActionPostprocessor
 from .contract import encode_image, finite_array, fingerprint, validate_actions, validate_metadata
+from .simulation import SimulationService
 
 
 def _positive(value, name):
@@ -50,6 +52,37 @@ def _outcome(value):
     return result
 
 
+class PhysicalRobotService(SimulationService):
+    """Serve passive diagnostics alongside the normal environment RPCs."""
+
+    @property
+    def handlers(self):
+        routes = super().handlers
+        if "read_only_observation" in self.metadata.get("capabilities", []):
+            routes["/observe"] = self.observe
+        return routes
+
+    def reset(self, payload):
+        if self.metadata.get("execution", {}).get("actuation_enabled") is False:
+            raise ValueError("Actuation is disabled; reset requires an actuation-enabled physical node")
+        return super().reset(payload)
+
+    def observe(self, payload):
+        if not isinstance(payload, dict) or set(payload) - {"protocol_version"}:
+            raise ValueError("observe takes an empty request")
+        if self.fault:
+            raise RuntimeError(f"Observation requires a healthy node: {self.fault}")
+        if self.run_id is not None:
+            raise ValueError("Observation requires an idle physical node")
+        try:
+            row = self.backend.observe()
+            self._observation(row)
+            return row
+        except Exception as error:
+            self.fault = f"observe: {type(error).__name__}: {error}"
+            raise
+
+
 class RealRobotBackend:
     """One robot, paced action prefixes, fresh observations and pluggable labels.
 
@@ -61,6 +94,7 @@ class RealRobotBackend:
     """
 
     def __init__(self, config, *, robot=None, cameras=None, task=None,
+                 robot_factory="pressb.robots.piper.real:PiperHardware",
                  clock=time.monotonic, sleep=time.sleep, _start_watchdog=True):
         allowed = {"robot", "cameras", "task", "task_id", "instruction", "horizon", "control_hz",
                    "gamma", "discount_timebase_hz", "max_episode_steps", "max_episode_seconds",
@@ -93,8 +127,6 @@ class RealRobotBackend:
         self.smoothing = {"mode": "none", "alpha": .8, **config.get("smoothing", {})}
         if set(self.smoothing) != {"mode", "alpha"}:
             raise ValueError("smoothing supports mode and alpha")
-        from pressb.control.joint_actions import JointActionPostprocessor
-        # Validate even when disabled; it is applied only for the seven-axis ABI.
         self.postprocessor = JointActionPostprocessor(**self.smoothing)
         self._clock, self._sleep = clock, sleep
         self._lock = threading.RLock()
@@ -108,7 +140,7 @@ class RealRobotBackend:
         self._episode_started = None
         self.robot = self.cameras = self.task = None
         try:
-            self.robot = robot if robot is not None else _component(config.get("robot", {}), "pressb.robots.piper.real:PiperHardware")
+            self.robot = robot if robot is not None else _component(config.get("robot", {}), robot_factory)
             self.cameras = cameras if cameras is not None else _component(config.get("cameras", {}), "pressb.sensors.realsense:RealSenseCameras")
             self.task = task if task is not None else _component(config.get("task", {}), "pressb.runtime.real_robot_operator:ManualTask")
             hardware = self.robot.describe()
@@ -118,27 +150,32 @@ class RealRobotBackend:
                 raise ValueError("Hardware and environment control_hz must agree")
             if self.action["names"] != hardware["state"]["names"] or self.action["units"] != hardware["state"]["units"]:
                 raise ValueError("Real joint-position commands and measured states must share coordinates")
-            if self.smoothing["mode"] != "none" and self.width != 7:
-                raise ValueError("joint_ema currently supports six arm joints plus gripper")
+            if self.smoothing["mode"] == "joint_ema" and self.width not in (7, 8):
+                raise ValueError("joint_ema supports six or seven arm joints followed by one gripper coordinate")
+            self.actuation_enabled = hardware.get("actuation_enabled", False)
+            if type(self.actuation_enabled) is not bool:
+                raise ValueError("Hardware actuation_enabled must be a boolean")
             camera_names = list(self.cameras.config)
             # Components advertise immutable identity, not live frames/counters.
             identity = deepcopy(config)
             if isinstance(identity.get("task", {}).get("config"), dict):
                 identity["task"]["config"].pop("directory", None)
             sources = {}
-            for obj in (self, self.robot, self.cameras, self.task):
-                path = inspect.getsourcefile(type(obj))
+            for cls in (RealRobotBackend, type(self), type(self.robot), type(self.cameras), type(self.task),
+                        type(self.postprocessor)):
+                path = inspect.getsourcefile(cls)
                 if path:
-                    sources[type(obj).__module__] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                    sources[cls.__module__] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
             self.metadata = validate_metadata(dict(schema_version=2, node_type="simulation", environment_type="real_robot",
-                task_id=self.task_id, num_envs=1, reset_mode="indexed", capabilities=[], terminal_observation_modes=["full"],
+                task_id=self.task_id, num_envs=1, reset_mode="indexed",
+                capabilities=[] if self.actuation_enabled else ["read_only_observation"], terminal_observation_modes=["full"],
                 task_config_sha256=fingerprint({"config": identity, "hardware": hardware, "task": self.task.describe()}),
                 source_revision=fingerprint(sources), smoothing=deepcopy(self.smoothing),
                 observation={"state": deepcopy(hardware["state"]), "cameras": camera_names}, action=self.action,
                 control_state_dim=self.width, task_features_dim=0,
                 discount={"gamma": self.gamma, "timebase_hz": self.discount_hz},
                 execution={"backend": "physical_robot", "robot_type": hardware.get("robot_type"),
-                    "actuation_enabled": hardware.get("actuation_enabled", False),
+                    "actuation_enabled": self.actuation_enabled,
                     "max_episode_steps": self.max_steps, "max_episode_seconds": self.max_seconds,
                     "watchdog_seconds": self.watchdog_seconds, "physics_steps_semantics": "executed hardware control ticks",
                     "discount_semantics": "executed control ticks; inference and manual reset waits excluded"},
@@ -166,7 +203,7 @@ class RealRobotBackend:
         # A command returning after its deadline must never be acknowledged.
         self._fault = f"{type(error).__name__}: {error}"
         self._active = False
-        if self._connected:
+        if self._connected and self.actuation_enabled:
             try:
                 self.robot.stop()
             except Exception as stop_error:
@@ -189,6 +226,24 @@ class RealRobotBackend:
             self._check()
             return finite_array(self.robot.read_state(), (self.width,), "measured robot state").copy()
 
+    def _policy_target(self, raw):
+        if self.width == 7:
+            return self.postprocessor.apply(raw)
+        if self.postprocessor.mode == "joint_ema" and self.postprocessor.alpha < 1:
+            # FR3 has seven arm coordinates and one unfiltered closure target.
+            # The previous setpoint already includes the hardware slew limit.
+            alpha = self.postprocessor.alpha
+            target = raw.astype(float, copy=True)
+            target[:7] = alpha * target[:7] + (1 - alpha) * self._last_command[:7]
+            return target
+        return raw
+
+    def _connect(self):
+        if not self._connected:
+            self.robot.connect()
+            self._connected = True
+            self.cameras.connect()
+
     def _observation(self):
         images = self.cameras.read()
         expected = self.metadata["observation"]["cameras"]
@@ -201,9 +256,24 @@ class RealRobotBackend:
                 raise ValueError(f"Camera {name} must supply RGB uint8 HWC pixels")
             encoded[name] = encode_image(array)
         state = self._state()
+        control = state if self._last_command is None else self._last_command
         return {"state": state.tolist(), "images": encoded, "task": self.instruction,
-                "control_state": self._last_command.tolist(), "task_features": [],
-                "model_inputs": deepcopy(self.model_inputs)}
+                "control_state": control.tolist(), "task_features": [], "model_inputs": deepcopy(self.model_inputs)}
+
+    def observe(self):
+        """Capture measured feedback and RGB frames on a passive physical node."""
+        with self._lock:
+            self._check()
+            if self._active or self.actuation_enabled:
+                raise ValueError("Read-only observation requires an idle node with actuation disabled")
+            try:
+                self._connect()
+                return {"observation": self._observation(), "info": {
+                    "read_only": True, "submitted_commands": 0,
+                    "camera_metadata": deepcopy(getattr(self.cameras, "metadata", {}))}}
+            except BaseException as error:
+                self._fail(error)
+                raise
 
     def reset(self, env_ids, seed, options=None):
         self._check()
@@ -214,13 +284,10 @@ class RealRobotBackend:
             raise ValueError("Reset requires nonnegative seed and object options")
         if self._active:
             raise ValueError("Cannot reset an active physical episode")
-        if not self.metadata["execution"]["actuation_enabled"]:
+        if not self.actuation_enabled:
             raise RuntimeError("Actuation is disabled; use camera/feedback diagnostics, not RL reset/step")
         try:
-            if not self._connected:
-                self.robot.connect()
-                self._connected = True
-                self.cameras.connect()
+            self._connect()
             # Safe hold only; task hook asks the operator to restore the scene.
             with self._lock:
                 self.robot.hold()
@@ -265,15 +332,12 @@ class RealRobotBackend:
                     if terminal:
                         sent = self.robot.hold()
                     else:
-                        command = self.postprocessor.apply(raw) if self.width == 7 else raw
-                        sent = self.robot.command(command)
+                        sent = self.robot.command(self._policy_target(raw))
                     self._check()
                     if self._clock() - self._last_activity > self.watchdog_seconds:
                         raise TimeoutError("Hardware operation exceeded the control watchdog deadline")
                     self._last_command = finite_array(sent, (self.width,), "sent robot command").copy()
                     if self.width == 7:
-                        # Hardware rate projection is part of execution. EMA
-                        # history must follow what was actually sent, too.
                         self.postprocessor.accept_applied(self._last_command)
                     self._last_activity = self._clock()
                 applied.append(self._last_command.tolist())
@@ -328,7 +392,7 @@ class RealRobotBackend:
         with self._lock:
             self._check()
             try:
-                if self._connected:
+                if self._connected and self.actuation_enabled:
                     self.robot.hold()
                 self._active = False
                 self.task.end("run_closed")
@@ -360,3 +424,9 @@ class RealRobotBackend:
 
 def create_backend(config):
     return RealRobotBackend(config)
+
+
+def create_franka_backend(config):
+    from pressb.robots.franka.environment import FrankaReturnBackend
+    return FrankaReturnBackend({"horizon": 16, "control_hz": 25, **config},
+                               robot_factory="pressb.robots.franka.real:FrankaHardware")

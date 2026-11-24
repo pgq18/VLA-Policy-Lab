@@ -7,6 +7,7 @@
 /ref/wall-x/
 /assets/isaac/
 /assets/generated/
+/src/pressb/robots/franka/_franka_native*.so
 /assets/reference/
 # Historical camera measurements include machine-local evidence paths.
 /assets/global_camera_registration.json
