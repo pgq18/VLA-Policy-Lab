@@ -7,6 +7,18 @@ import pytest
 from pressb.training import cli
 
 
+def test_elevator_sft_yaml_defaults_feed_online_inference():
+    OmegaConf = pytest.importorskip("omegaconf").OmegaConf
+    from pressb.experiments.config import PROJECT_ROOT, load_experiment
+
+    recipes = PROJECT_ROOT / "examples/elevator"
+    sft = OmegaConf.to_container(OmegaConf.load(recipes / "sft.yaml"), resolve=True)
+    model = load_experiment(recipes / "base.yaml")["nodes"]["inference"]["backend"]["config"]
+    assert PROJECT_ROOT / sft["run_root_dir"] / sft["run_id"] / "checkpoints/best" == Path(model["checkpoint"])
+    assert PROJECT_ROOT / sft["framework"]["qwenvl"]["base_vlm"] == Path(model["base_vlm"])
+    assert PROJECT_ROOT / sft["framework"]["vj2_model"]["base_encoder"] == Path(model["base_encoder"])
+
+
 @pytest.mark.parametrize('family,profile,module', [
     ('walloss', None, None),
     *[('vlajepa', profile, module) for profile,module in cli.VLA_TRAINERS.items()],

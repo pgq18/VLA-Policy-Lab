@@ -1,0 +1,3 @@
+# Select dsrl, action_residual, joint_residual, residual_after_dsrl, or dppo.
+# Use a fresh name when repeating a run. Nodes inherit their paths from base.yaml.
+extends: dsrl.yaml

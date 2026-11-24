@@ -1,0 +1,46 @@
+# Common policy, scene, and deployment settings. This recipe evaluates SFT alone.
+schema_version: 1
+name: sft-eval-01
+model:
+  plugin: vlajepa
+  config:
+    checkpoint: ${project_root}/outputs/elevator/sft/pose9/checkpoints/best
+    base_vlm: ${project_root}/.cache/vlajepa/Qwen3-VL-2B-Instruct
+    base_encoder: ${project_root}/.cache/vlajepa/vjepa2-vitl-fpc64-256
+    device: cuda:1
+    image_preprocess_device: cpu
+task:
+  plugin: elevator
+  config:
+    config: ${project_root}/outputs/rtx5090_eval_comparison/input/config.json
+    snapshot: ${project_root}/outputs/rtx5090_eval_comparison/input/scene.usda
+    dataset: ${project_root}/outputs/rtx5090_eval_comparison/input/dataset_metadata
+    asset_bundle: ${project_root}/outputs/rtx5090_eval_comparison/input/assets
+    gpu: 0
+    num_envs: 1
+    floor_sampling: random
+    panel_randomization: true
+    physics_backend: gpu
+    max_seconds: 15
+    camera_resolution: 224
+    smoothing_window: 3
+    single_gamma: 0.99
+    output: ${project_root}/outputs/elevator/${experiment_name}/simulation
+nodes:
+  inference:
+    server: {host: 127.0.0.1, port: 8100, transport: ws}
+    service: {cache_size: 128, cache_ttl: 600, batch_size: 4}
+  simulation:
+    server: {host: 127.0.0.1, port: 8101, transport: http}
+    service: {request_cache_size: 8}
+run:
+  method: base
+  mode: eval
+  device: cpu
+  seed: 43
+  endpoints:
+    inference: ws://127.0.0.1:8100
+    simulation: http://127.0.0.1:8101
+    timeout: 180
+  rollout: {num_envs: 1, eval_episodes: 10, execution_horizon: 7, max_transitions: 10000}
+  output_dir: ${project_root}/outputs/elevator/${experiment_name}/run

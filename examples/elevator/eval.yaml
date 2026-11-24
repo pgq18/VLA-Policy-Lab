@@ -1,0 +1,10 @@
+# Inherit the same method, learner and model settings used during training.
+extends: train.yaml
+name: dsrl-eval-01
+run:
+  mode: eval
+  seed: 43
+  checkpoint:
+    # Point to the selected training run, or set an explicit step_*.pt file.
+    resume: ${project_root}/outputs/elevator/dsrl-train-01/run/status.json
+  rollout: {eval_episodes: 10}

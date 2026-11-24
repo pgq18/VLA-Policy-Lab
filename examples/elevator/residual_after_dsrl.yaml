@@ -1,0 +1,7 @@
+extends: action_residual.yaml
+name: residual-after-dsrl-train-01
+run:
+  frozen_dsrl:
+    # Use this completed run's checkpoint, or specify a particular step_*.pt.
+    checkpoint: ${project_root}/outputs/elevator/dsrl-train-01/run/status.json
+    deterministic: true

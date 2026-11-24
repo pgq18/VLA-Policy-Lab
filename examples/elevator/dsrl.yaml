@@ -1,0 +1,11 @@
+extends: base.yaml
+name: dsrl-train-01
+run:
+  method: dsrl
+  mode: train
+  device: cuda:1
+  seed: 42
+  observation_state_encoding: pose9
+  learner: {seed: 42, noise_steps: 1, noise_scale: 1.5, batch_size: 256, hidden_dim: 256, bootstrap_truncated: false}
+  update: {replay_capacity: 100000, learning_starts: 2000, utd: 1, max_backlog: 1000, max_updates_per_wait: 16}
+  checkpoint: {interval: 10000, keep: null, include_replay: true}

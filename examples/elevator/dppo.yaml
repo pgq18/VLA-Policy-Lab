@@ -1,0 +1,30 @@
+extends: base.yaml
+name: dppo-train-01
+nodes:
+  inference:
+    server: {max_message_bytes: 201326592}
+    service:
+      action_expert: {transition_std: 0.002, denoising_steps: 4}
+run:
+  method: dppo
+  mode: train
+  device: cuda:1
+  seed: 42
+  endpoints: {timeout: 300, max_message_bytes: 201326592}
+  checkpoint: {interval: 10000, keep: null, include_replay: false}
+  dppo:
+    rollout_steps: 96
+    epochs: 1
+    minibatch_size: 128
+    actor_lr: 0.000001
+    critic_lr: 0.0003
+    gae_lambda: 0.95
+    bootstrap_truncated: false
+    logprob_reduction: upstream_mean
+    logprob_max: 10.0
+    gamma_denoising: 0.99
+    clip_epsilon: 0.01
+    clip_epsilon_min: 0.001
+    target_kl: 0.05
+    critic_warmup_iterations: 2
+    critic_continue_after_kl: true

@@ -22,6 +22,7 @@ import torch
 from torch import nn
 
 from .client import NodeClient
+from .checkpoint_reference import resolve_checkpoint
 from .contract import finite_array, fingerprint, negotiate, validate_observation
 from .dppo import (DPPOConfig, clipped_policy_loss, clipped_value_loss, generalized_advantages,
                    reduce_logprobs, metrics_to_floats)
@@ -917,6 +918,8 @@ class DPPOTrainer:
     def run(self):
         if self.started is not None:
             raise RuntimeError("A DPPO trainer can run only once")
+        # Pin the checkpoint before this run can replace its own prior status.
+        self.config.checkpoint.resume = resolve_checkpoint(self.config.checkpoint.resume, "dppo")
         if self.output.exists() and any(self.output.iterdir()) and not self.config.checkpoint.resume:
             raise FileExistsError(f"Output directory is not empty: {self.output}")
         self.output.mkdir(parents=True, exist_ok=True)

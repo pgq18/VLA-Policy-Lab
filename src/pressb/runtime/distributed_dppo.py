@@ -216,7 +216,8 @@ class DistributedDPPOTrainer(DPPOTrainer):
         infer['action_expert'].update(policy_version=self.policy_version,
                                      weights_sha256=state_sha256(self.expert.state_dict()))
         self.collectives.broadcast({'command': 'initialize', 'inference': infer,
-                                    'simulation': self.simulation_metadata})
+                                    'simulation': self.simulation_metadata,
+                                    'resume': self.config.checkpoint.resume})
         self._assert_replicas()
         self._replicas_ready = True
 
@@ -263,6 +264,7 @@ class DistributedDPPOTrainer(DPPOTrainer):
                         raise RuntimeError('Learner worker was initialized twice')
                     self.inference = _MetadataClient(message['inference'])
                     self.simulation = _MetadataClient(message['simulation'])
+                    self.config.checkpoint.resume = message['resume']
                     self._initializing_worker = True
                     try:
                         DPPOTrainer._negotiate(self)

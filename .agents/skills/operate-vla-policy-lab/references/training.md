@@ -1,6 +1,6 @@
 # Policy training and evaluation
 
-Decide which parameters to update and which data to use to measure performance. Use supervised fine-tuning (SFT) to fit a policy to demonstrations with action labels. Use `eval` to measure the performance of existing weights. To optimize a policy with environment feedback, use `train` and set `run.method` in the experiment JSON according to the table. Run all commands from the repository root.
+Decide which parameters to update and which data to use to measure performance. Use supervised fine-tuning (SFT) to fit a policy to demonstrations with action labels. Use `eval` to measure the performance of existing weights. To optimize a policy with environment feedback, use `train` and set `run.method` in the experiment YAML or JSON according to the table. Run all commands from the repository root.
 
 | Goal | Method and behavior | Example recipe |
 |---|---|---|
@@ -27,7 +27,7 @@ In multi-device π₀.₅ training, each process selects one visible device usin
 
 ## Online training and evaluation
 
-In the experiment JSON, set `model.config.device` for inference, `task.config.gpu_ids` for simulation backends that support it, and `run.device` for the learner. The CLI option `--device` overrides only the learner device. Across machines, use device indices local to each host and service addresses reachable from the trainer. For the PAP DSRL example below, check the external paths, ports, and devices in the recipe. Open separate terminals for the model, Isaac, and RL environments and set the same `recipe` in each. Start the trainer once both services are ready. [Node and service configuration](../../../../docs/configurable_rl_nodes.md)
+In the experiment YAML or JSON, set `model.config.device` for inference, `task.config.gpu_ids` for simulation backends that support it, and `run.device` for the learner. The CLI option `--device` overrides only the learner device. Across machines, use device indices local to each host and service addresses reachable from the trainer. For the PAP DSRL example below, check the external paths, ports, and devices in the recipe. Open separate terminals for the model, Isaac, and RL environments and set the same `recipe` in each. Start the trainer once both services are ready. [Node and service configuration](../../../../docs/configurable_rl_nodes.md)
 
 ```bash
 recipe=configs/experiments/pap_walloss_dsrl.json

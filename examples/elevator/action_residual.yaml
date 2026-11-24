@@ -1,0 +1,5 @@
+extends: dsrl.yaml
+name: action-residual-train-01
+run:
+  method: action_residual
+  learner: {residual_mode: xyz, residual_scale: [0.02, 0.02, 0.02]}

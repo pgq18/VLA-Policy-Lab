@@ -15,7 +15,7 @@ from pressb.registry import available
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("list", "validate", "prepare", "inference", "simulation", "real_robot", "train", "eval", "collect"))
-    parser.add_argument("--config", type=Path, help="Declarative experiment JSON")
+    parser.add_argument("--config", type=Path, help="Declarative experiment YAML or JSON file")
     parser.add_argument("--resolved-dir", type=Path, help="Output directory for immutable resolved node configs")
     parser.add_argument("--output", type=Path, help="Runner output directory")
     parser.add_argument("--device")

@@ -1,0 +1,4 @@
+extends: action_residual.yaml
+name: joint-residual-train-01
+run:
+  method: joint_residual

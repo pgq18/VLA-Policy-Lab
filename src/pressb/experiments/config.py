@@ -46,11 +46,13 @@ def _merge(base, override):
     return result
 
 
-def _expand(value, directory):
+def _expand(value, source, experiment_name=None):
     if isinstance(value, dict):
-        return {key: _expand(item, directory) for key, item in value.items()}
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError(f"Experiment mapping keys must be strings in {source}")
+        return {key: _expand(item, source, experiment_name) for key, item in value.items()}
     if isinstance(value, list):
-        return [_expand(item, directory) for item in value]
+        return [_expand(item, source, experiment_name) for item in value]
     if not isinstance(value, str):
         return value
     def replace(match):
@@ -58,27 +60,72 @@ def _expand(value, directory):
         if key == "project_root":
             return str(PROJECT_ROOT)
         if key == "experiment_dir":
-            return str(directory)
+            return str(source.parent)
+        if key == "experiment_name":
+            if not isinstance(experiment_name, str):
+                raise ValueError(f"{match[0]} requires an experiment name defined independently of itself in {source}")
+            return experiment_name
         if key.startswith("env:") and os.environ.get(key[4:]):
             return os.environ[key[4:]]
-        raise ValueError(f"Unresolved experiment variable: {match[0]}")
+        raise ValueError(f"Unresolved experiment variable: {match[0]} in {source}")
     return _VARIABLE.sub(replace, value)
 
 
-def _read(path, stack=()):
+def _parse_experiment(path, content):
+    if path.suffix.lower() in (".yaml", ".yml"):
+        import yaml
+
+        try:
+            raw = yaml.safe_load(content)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Invalid experiment YAML in {path}: {exc}") from exc
+        # Resolved node configs are JSON. Catch YAML-only types (e.g. dates)
+        # and recursive aliases here, before expanding or writing any node.
+        try:
+            json.dumps(raw, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Use JSON-compatible YAML values in {path}: {exc}") from exc
+    else:
+        try:
+            raw = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid experiment JSON in {path}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"Experiment root must be a mapping in {path}")
+    unknown = set(raw) - _SECTIONS
+    if unknown:
+        raise ValueError(f"Unknown experiment sections in {path}: {', '.join(sorted(map(repr, unknown)))}")
+    return raw
+
+
+def _read_layers(path, stack=()):
     path = Path(path).expanduser().resolve(strict=True)
     if path in stack:
         raise ValueError("Experiment inheritance cycle: " + " -> ".join(map(str, (*stack, path))))
-    raw = json.loads(path.read_text())
-    if not isinstance(raw, dict) or set(raw) - _SECTIONS:
-        raise ValueError(f"Invalid experiment sections in {path}")
+    content = path.read_bytes()
+    raw = _parse_experiment(path, content)
     parent = raw.pop("extends", None)
     if parent is not None and (not isinstance(parent, str) or not parent):
-        raise ValueError("extends must name one parent JSON file")
-    base, sources = _read(path.parent / parent, (*stack, path)) if parent else ({}, [])
-    # Resolve each file's variables before merging, preserving parent-relative paths.
-    data = _merge(base, _expand(raw, path.parent))
-    return data, [*sources, {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}]
+        raise ValueError(f"extends must name one parent JSON or YAML file in {path}")
+    if parent:
+        yield from _read_layers(path.parent / parent, (*stack, path))
+    yield path, raw, hashlib.sha256(content).hexdigest()
+
+
+def _read(path):
+    layers = list(_read_layers(path))
+    # A parent can refer to its child's final name. Expand names once in their
+    # own source context before substituting the rest of each authored file.
+    experiment_name = None
+    for source, raw, _ in layers:
+        if "name" in raw:
+            experiment_name = _expand(raw.pop("name"), source)
+    data = {"name": experiment_name}
+    sources = []
+    for source, raw, digest in layers:
+        data = _merge(data, _expand(raw, source, experiment_name))
+        sources.append({"path": str(source), "sha256": digest})
+    return data, sources
 
 
 def _plugin(spec, kind):

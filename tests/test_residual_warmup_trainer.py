@@ -348,6 +348,24 @@ def test_residual_stage_inherits_warm_networks_but_starts_fresh_rollouts(tmp_pat
     assert len(sim.steps) == 2
 
 
+def test_status_references_select_both_trained_policies_for_residual_evaluation(tmp_path):
+    source, _, _, _ = build(tmp_path / "dsrl", steps=6)
+    noise_checkpoint = source.run()["last_checkpoint"]
+    options = residual_options(tmp_path / "residual", source, str(source.output / "status.json"))
+    residual, _, _, _ = build(tmp_path / "residual", cfg=options)
+    residual_checkpoint = residual.run()["last_checkpoint"]
+    assert residual.residual_initialization["checkpoint"] == noise_checkpoint
+
+    options.update(mode="eval", output_dir=str(tmp_path / "eval"), residual_initialize_from=None)
+    options["checkpoint"]["resume"] = str(residual.output / "status.json")
+    options["rollout"]["max_transitions"] = 40
+    evaluated, _, _, _ = build(tmp_path / "eval", cfg=options, runner_type=GenericTrainer)
+    assert evaluated.run()["state"] == "completed"
+    assert evaluated.frozen_dsrl.provenance["checkpoint"] == noise_checkpoint
+    assert evaluated.config.checkpoint.resume == residual_checkpoint
+    assert_module_equal(evaluated.learner.actor, residual.learner.actor.state_dict())
+
+
 @pytest.mark.parametrize("change", ["noise_weights", "no_warmup", "reward"])
 def test_residual_initialization_rejects_unrelated_checkpoint(tmp_path, change):
     source, _, _, _ = build(tmp_path / "source", steps=6)

@@ -566,10 +566,11 @@ def test_frozen_dsrl_resume_binds_checkpoint_and_sampling_policy(tmp_path):
     result = runner.run()
     cfg = deepcopy(runner.config)
     cfg.output_dir = str(tmp_path / "resume")
-    cfg.checkpoint.resume = result["last_checkpoint"]
+    cfg.checkpoint.resume = str(runner.output / "status.json")
     cfg.rollout.max_transitions = 8
     resumed = GenericTrainer(cfg, inference_client=Inference(inference.meta), simulation_client=Simulation(simulation.meta))
     assert resumed.run()["transitions"] == 8
+    assert resumed.config.checkpoint.resume == result["last_checkpoint"]
     np.testing.assert_array_equal(resumed.replay.arrays["base_action"][:4], runner.replay.arrays["base_action"][:4])
     cfg.output_dir = str(tmp_path / "wrong-sampling")
     cfg.frozen_dsrl.deterministic = False

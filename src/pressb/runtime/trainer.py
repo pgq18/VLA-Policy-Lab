@@ -30,6 +30,7 @@ import torch
 from .learner import (CHECKPOINT_VERSION, SOURCE_COMMIT, LearnerConfig,
                                     ReplayBuffer, SACLearner, _Actor)
 from .client import NodeClient
+from .checkpoint_reference import resolve_checkpoint
 from .contract import validate_observation
 from .residual_warmup import IsolatedRNG, ResidualWarmup, ResidualWarmupConfig
 from .observation_encoding import encode_rl_state, negotiate_rl_contract
@@ -1419,6 +1420,12 @@ class GenericTrainer:
     def run(self):
         if self._executor is not None:
             raise RuntimeError("A GenericTrainer instance can only run once")
+        # Pin the checkpoint before this run can replace its own prior status.
+        cfg = self.config
+        cfg.checkpoint.resume = resolve_checkpoint(cfg.checkpoint.resume, cfg.method)
+        if cfg.frozen_dsrl is not None:
+            cfg.frozen_dsrl.checkpoint = resolve_checkpoint(cfg.frozen_dsrl.checkpoint, "dsrl")
+        cfg.residual_initialize_from = resolve_checkpoint(cfg.residual_initialize_from, "dsrl")
         if self.output.exists() and any(self.output.iterdir()) and not self.config.checkpoint.resume:
             raise FileExistsError(f"Output directory is not empty: {self.output}")
         self.output.mkdir(parents=True, exist_ok=True)

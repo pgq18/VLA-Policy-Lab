@@ -30,7 +30,9 @@ The directory contains `inference.json`, `simulation.json`, `trainer.json` and `
 | `run` | Rollout method, client endpoints, action execution horizon, learner, checkpoints and output |
 | `collection` | Optional trajectory directory and whether to include images in a collection |
 
-A configuration can inherit from another JSON file through `extends`. Parent paths are relative to the declaring file. Nested objects merge by key and lists replace the parent list. Strings can contain `${project_root}`, `${experiment_dir}` and `${env:NAME}`. Set every referenced environment variable on each host that resolves the configuration.
+Experiment recipes accept JSON or YAML (`.yaml` and `.yml`). Use `extends` to inherit a recipe in either format. Parent paths are relative to the declaring file. Nested objects merge by key and lists replace the parent list. In string values, `${project_root}` selects the checkout, `${experiment_dir}` the directory containing that field, and `${experiment_name}` the final merged experiment name. Optional `${env:NAME}` references require the variable on each host that reads the recipe. The [elevator examples](../examples/elevator/) supply their defaults directly in YAML.
+
+For SAC or DPPO evaluation, set `run.checkpoint.resume` to a checkpoint or a completed training run's local `status.json`. A second-stage residual can similarly use a DSRL status file in `run.frozen_dsrl.checkpoint`. Only the learner reads the status file at execution time, so config validation and service startup work before training has finished. Use a specific checkpoint file to select an intermediate step or resume an interrupted run. Existing model, task and learner identity checks still apply.
 
 ## Add a task or model
 
